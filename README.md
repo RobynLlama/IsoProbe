@@ -1,7 +1,9 @@
 # PSXtractor
 
-Describe your project here!
+![Static Badge](https://img.shields.io/badge/Language-C%23-blue?style=flat-square&logo=sharp)
 
-## Using this Template
+![Static Badge](https://img.shields.io/badge/License-LGPLv3-orange?style=flat-square&logo=gnuemacs)
 
-Template Users: Make sure to remove this section after you create your project!
+![PennantProse Logo](banner.png)
+
+A WIP ISO-9660 filesystem library and frontend app for browsing/extracting
