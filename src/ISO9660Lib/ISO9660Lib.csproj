@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>ISO9660Lib</AssemblyName>
+
+    <Version>1.0.0</Version>
+    <Nullable>enable</Nullable>
+    <TargetFramework>net9.0</TargetFramework>
+
+    <Authors>Robyn</Authors>
+    <Description>A library for encapsulating ISO-9660 filesystems in C#</Description>
+    <LangVersion>latest</LangVersion>
+
+    <Product>$(AssemblyName)</Product>
+    <RootNamespace>$(Product)</RootNamespace>
+    <TargetName>$(Product)</TargetName>
+    <AssemblyName>$(Product)</AssemblyName>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

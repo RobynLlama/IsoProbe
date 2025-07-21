@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PSXtractor</AssemblyName>
+
+    <Version>1.0.0</Version>
+    <Nullable>enable</Nullable>
+    <TargetFramework>net9.0</TargetFramework>
+
+    <Authors>Robyn</Authors>
+    <Description>A console application for inspecting ISO-9660 filesystems</Description>
+    <LangVersion>latest</LangVersion>
+
+    <Product>$(AssemblyName)</Product>
+    <RootNamespace>$(Product)</RootNamespace>
+    <TargetName>$(Product)</TargetName>
+    <AssemblyName>$(Product)</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ISO9660Lib\ISO9660Lib.csproj" />
+  </ItemGroup>
+
+</Project>
