@@ -69,6 +69,36 @@ public class DataRecord
     Owner = owner;
   }
 
+  public void DumpFileListing(StringBuilder sb, int indent, bool recursive = true)
+  {
+    if (!FlagIsDirectory)
+      return;
+
+    string padding = new(' ', indent * 2);
+
+    var items = OwningSector.GetDirectoryContents();
+
+    sb.Append(padding);
+    sb.AppendLine(ToString());
+
+    foreach (var item in items)
+    {
+      if (item.Identifier == "." || item.Identifier == "..")
+        continue;
+
+      if (item.FlagIsDirectory && recursive)
+      {
+        //don't print anything just recurse
+        item.DumpFileListing(sb, indent + 1, true);
+        continue;
+      }
+
+      sb.Append(padding);
+      sb.Append(padding);
+      sb.AppendLine(item.ToString());
+    }
+  }
+
   internal static DataRecord FromBytes(byte[] data, ECMAFS owner)
   {
     using MemoryStream ms = new(data);
@@ -115,5 +145,32 @@ public class DataRecord
     identifier ??= Encoding.ASCII.GetString(reader.ReadBytes(length));
 
     return new(extentLocation, dataLength, flags, identifier, owner);
+  }
+
+  /// <summary>
+  /// Returns a formatted string for the file that differs
+  /// depending on if its a directory or file
+  /// </summary>
+  /// <returns></returns>
+  public override string ToString()
+  {
+    string padID;
+
+    if (FlagIsDirectory)
+    {
+      padID = Identifier.PadRight(9);
+      return $"{padID} [{OwningSector.GetDirectoryContents().Count} items]";
+    }
+
+
+    string sizeKB;
+
+    if (DataLength > 1999)
+      sizeKB = $"{DataLength / 1000f:N1} kb";
+    else
+      sizeKB = $"{DataLength:N0} b";
+
+    padID = Identifier.PadRight(15);
+    return $"{padID} [{sizeKB}]";
   }
 }

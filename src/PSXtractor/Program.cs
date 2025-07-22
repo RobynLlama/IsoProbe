@@ -53,6 +53,12 @@ namespace PSXtractor
         Size:        {disk.PVD.RootRecord.DataLength}
 
       """);
+
+      Console.WriteLine("Beginning File Dump:");
+      StringBuilder sb = new();
+
+      disk.PVD.RootRecord.DumpFileListing(sb, 0, true);
+      Console.WriteLine(sb.ToString());
     }
   }
 }
