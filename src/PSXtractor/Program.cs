@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ISO9660Lib.ISO9660FS;
 
@@ -40,7 +41,6 @@ namespace PSXtractor
 
         Root Record:
          Identifier:   {disk.PVD.RootRecord.Identifier}
-         AttrLength:   {disk.PVD.RootRecord.ExtendedAttributesLength}
          Extent:       {disk.PVD.RootRecord.LocationOfExtent}
          Size:         {disk.PVD.RootRecord.DataLength}
 
@@ -48,8 +48,7 @@ namespace PSXtractor
 
       StringBuilder sb = new("Dumping contents of disc:\n");
 
-      disk.PVD.RootRecord.BuildDirectory();
-      disk.PVD.RootRecord.DumpDirectory(sb, 1);
+      //disk.PVD.RootRecord.DumpDirectory(sb, 1);
 
       buildTime = sw.ElapsedMilliseconds;
       sw.Restart();
@@ -61,8 +60,12 @@ namespace PSXtractor
       if (!oDir.Exists)
         oDir.Create();
 
-      foreach (var item in disk.PVD.RootRecord.ContainedItems)
-        item.DumpContents(oDir.FullName);
+      //foreach (var item in disk.PVD.RootRecord.ContainedItems)
+      //item.DumpContents(oDir.FullName);
+
+      var randomFile = disk.PVD.RootRecord.OwningSector.GetDirectoryContents().Where(x => x.Identifier == "SYSTEM.CNF;1").First();
+      Console.WriteLine(randomFile.Identifier);
+      Console.WriteLine(Encoding.ASCII.GetString(randomFile.OwningSector.GetFileContents()));
 
       dumpTime = sw.ElapsedMilliseconds;
       sw.Stop();
