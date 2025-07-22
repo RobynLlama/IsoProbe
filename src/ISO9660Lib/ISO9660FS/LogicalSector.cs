@@ -67,8 +67,9 @@ public class LogicalSector
     {
       int size = reader.ReadByte() - 1;
 
+      //Read every byte because some zeroes are just padding, actually
       if (size <= 0)
-        break;
+        continue;
 
       byte[] input = reader.ReadBytes(size);
       _directoryContentsCache.Add(DataRecord.FromBytes(input, Owner));
