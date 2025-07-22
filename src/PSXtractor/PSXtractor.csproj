@@ -22,4 +22,8 @@
     <ProjectReference Include="..\ISO9660Lib\ISO9660Lib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SimpleCommandLib" Version="1.1.1" />
+  </ItemGroup>
+
 </Project>
