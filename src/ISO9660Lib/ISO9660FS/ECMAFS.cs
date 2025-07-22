@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -38,6 +39,7 @@ public class ECMAFS
   public readonly long FileSize;
 
   private readonly BinaryReader _backingData;
+  private readonly Dictionary<int, LogicalSector> _sectorCache = [];
 
   /// <summary>
   /// Creates a new ECMAFS from a FileInfo on disk
@@ -142,13 +144,15 @@ public class ECMAFS
   /// <exception cref="InvalidDataException"></exception>
   public LogicalSector GetSectorLogical(int sector, int size)
   {
-    if (!TryGetSectorRaw(sector, out var _raw))
-      throw new InvalidDataException($"Unable to read sector #{sector}");
-
     int sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
 
-    //TODO: Cache these
-    return new(sector, sectorsOccupied, this);
+    if (_sectorCache.TryGetValue(sector, out var data))
+      return data;
+
+    LogicalSector sec = new(sector, sectorsOccupied, this);
+    _sectorCache.Add(sector, sec);
+
+    return sec;
   }
 
   /// <summary>
