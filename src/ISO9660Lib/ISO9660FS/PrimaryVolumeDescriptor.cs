@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using System.Text;
-
 namespace ISO9660Lib.ISO9660FS;
 
 /// <summary>
@@ -73,7 +69,7 @@ public class PrimaryVolumeDescriptor
     int volumeSetSize,
     int volumeSetNumber,
     int pathTableSize,
-    DataRecord rootRecord,
+    DataRecord root,
     ECMAFS owner
     )
   {
@@ -85,81 +81,7 @@ public class PrimaryVolumeDescriptor
     VolumeSetSize = volumeSetSize;
     VolumeSetNumber = volumeSetNumber;
     PathTableSize = pathTableSize;
-    RootRecord = rootRecord;
+    RootRecord = root;
     Owner = owner;
-  }
-
-  /// <summary>
-  /// Attempts to create a PrimaryVolumeDescriptor from a BinaryReader
-  /// containing exactly one sector
-  /// </summary>
-  /// <param name="reader">The BinaryReader containing the PVD</param>
-  /// <param name="owner">The ECMAFS that owns this PVD</param>
-  /// <returns></returns>
-  public static PrimaryVolumeDescriptor? FromSector(BinaryReader reader, ECMAFS owner)
-  {
-    //discard the header
-    reader.ReadBytes(ECMAFS.HEADER_SIZE);
-
-    int vType = reader.ReadByte();
-    string ident = Encoding.ASCII.GetString(reader.ReadBytes(5));
-    int version = reader.ReadByte();
-
-    if (vType != 1)
-    {
-      Console.WriteLine($"Expected a PVD record (0x01) at sector 16, type: {vType}, unable to continue!");
-      return null;
-    }
-
-    if (!ident.Equals("cd001", StringComparison.InvariantCultureIgnoreCase))
-    {
-      Console.WriteLine($"This application only supports properly formatted ISO-9660 volumes. Expected \"CD001\" Identifier: {ident}");
-      return null;
-    }
-
-    //skip the reserved byte
-    //SHOULD always be 0x00 but we're ignoring it for now
-    reader.ReadByte();
-
-    string systemID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
-    string volumeID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
-
-    //skip 8 unused bytes
-    reader.ReadBytes(8);
-
-    int logicalBlocks = reader.ReadInt32();
-    //skip the second half of the both-endian block
-    reader.ReadInt32();
-
-    //skip the escape sequences block
-    reader.ReadBytes(32);
-
-    int volumeSetSize = reader.ReadInt16();
-    //skip
-    reader.ReadInt16();
-
-    int volumeSequenceNo = reader.ReadInt16();
-    //skip
-    reader.ReadInt16();
-
-    int logicalBlockSize = reader.ReadInt16();
-    //skip
-    reader.ReadInt16();
-
-    int pathTableSize = reader.ReadInt16();
-    //skip
-    reader.ReadInt16();
-
-    //skip the type L and M path tables for now
-    reader.ReadBytes(16);
-
-    //skip more bytes??
-    reader.ReadBytes(4);
-
-    int dirLength = reader.ReadByte() - 1;
-    //Console.WriteLine($"Parsing {dirLength} bytes into root record");
-    var rootRecord = DataRecord.FromSector(new BinaryReader(new MemoryStream(reader.ReadBytes(dirLength))), owner);
-
-    return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, pathTableSize, rootRecord, owner);
   }
 }

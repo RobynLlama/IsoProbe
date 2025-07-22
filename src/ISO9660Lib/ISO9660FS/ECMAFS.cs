@@ -1,5 +1,7 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text;
 
 namespace ISO9660Lib.ISO9660FS;
 
@@ -52,13 +54,7 @@ public class ECMAFS
     _backingData = new(stream);
     FileSize = stream.Length;
 
-    if (!TryGetSector(16, out var reader))
-      throw new InvalidDataException("The provided file is not a valid ECMA-119/ISO-9660 filesystem: missing sector 16 (Primary Volume Descriptor).");
-
-    if (PrimaryVolumeDescriptor.FromSector(reader, this) is not PrimaryVolumeDescriptor pvd)
-      throw new InvalidDataException("Unable to parse sector 16 as a valid Primary Volume Description");
-
-    PVD = pvd;
+    PVD = GetPrimaryVolumeDescriptor();
     SectorCount = PVD.LogicalBlockCount;
   }
 
@@ -68,19 +64,99 @@ public class ECMAFS
   /// <param name="fileName">The name of the file to use as backing data</param>
   public ECMAFS(string fileName) : this(new FileInfo(fileName)) { }
 
+  internal PrimaryVolumeDescriptor GetPrimaryVolumeDescriptor()
+  {
+    if (!TryGetSectorRaw(16, out var _sector))
+      throw new InvalidDataException($"Unable to fetch sector 16, ECMAFS is invalid or damaged!");
+
+    using var sector = _sector;
+
+    BinaryReader reader = sector.Reader;
+
+    //discard the header
+    reader.ReadBytes(HEADER_SIZE);
+
+    int vType = reader.ReadByte();
+    string ident = Encoding.ASCII.GetString(reader.ReadBytes(5));
+    int version = reader.ReadByte();
+
+    if (vType != 1)
+      throw new InvalidDataException($"Expected a PVD record (0x01) at sector 16, type: {vType}, unable to continue!");
+
+    if (!ident.Equals("cd001", StringComparison.InvariantCultureIgnoreCase))
+      throw new InvalidDataException($"This application only supports properly formatted ISO-9660 volumes. Expected \"CD001\" Identifier: {ident}");
+
+    //skip the reserved byte
+    //SHOULD always be 0x00 but we're ignoring it for now
+    reader.ReadByte();
+
+    string systemID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
+    string volumeID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
+
+    //skip 8 unused bytes
+    reader.ReadBytes(8);
+
+    int logicalBlocks = reader.ReadInt32();
+    //skip the second half of the both-endian block
+    reader.ReadInt32();
+
+    //skip the escape sequences block
+    reader.ReadBytes(32);
+
+    int volumeSetSize = reader.ReadInt16();
+    //skip
+    reader.ReadInt16();
+
+    int volumeSequenceNo = reader.ReadInt16();
+    //skip
+    reader.ReadInt16();
+
+    int logicalBlockSize = reader.ReadInt16();
+    //skip
+    reader.ReadInt16();
+
+    int pathTableSize = reader.ReadInt16();
+    //skip
+    reader.ReadInt16();
+
+    //skip the type L and M path tables for now
+    reader.ReadBytes(16);
+
+    //skip more bytes??
+    reader.ReadBytes(4);
+
+    int dirLength = reader.ReadByte() - 1;
+    //Console.WriteLine($"Parsing {dirLength} bytes into root record");
+
+    DataRecord root = DataRecord.FromBytes(reader.ReadBytes(dirLength), this);
+
+    return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, pathTableSize, root, this);
+  }
+
+  public LogicalSector GetSectorLogical(int sector, int size)
+  {
+    if (!TryGetSectorRaw(sector, out var _raw))
+      throw new InvalidDataException($"Unable to read sector #{sector}");
+
+    int sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
+
+    //TODO: Cache these
+    return new(sector, sectorsOccupied, this);
+  }
+
   /// <summary>
-  /// Tries to fetch the given sector from this ECMAFS
+  /// Tries to fetch the given raw sector from this ECMAFS
   /// </summary>
   /// <param name="sector">Which sector to fetch</param>
-  /// <param name="output">A BinaryReader containing a complete physical sector</param>
+  /// <param name="output">A RawSector containing a complete physical sector</param>
   /// <returns>
   /// <em>TRUE</em> if the sector was successfully located and read into a binary reader<br />
   /// <em>FALSE</em> for any failure
   /// </returns>
   /// <remarks>
-  /// The out BinaryReader will be null in the event a <em>FALSE</em> value is returned.
+  /// The out RawSector will be null in the event a <em>FALSE</em> value is returned.
   /// </remarks>
-  public bool TryGetSector(int sector, [NotNullWhen(true)] out BinaryReader? output)
+  public bool TryGetSectorRaw(int sector, [NotNullWhen(true)] out PhysicalSector? output)
   {
     output = null;
     var location = sector * SECTOR_SIZE;
@@ -91,7 +167,7 @@ public class ECMAFS
     _backingData.BaseStream.Seek(location, SeekOrigin.Begin);
 
     MemoryStream ms = new(_backingData.ReadBytes(SECTOR_SIZE));
-    output = new(ms);
+    output = new(this, sector, new(ms));
     return true;
   }
 }
