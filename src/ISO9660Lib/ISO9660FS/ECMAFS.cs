@@ -38,6 +38,42 @@ public class ECMAFS
   /// </summary>
   public readonly long FileSize;
 
+  /// <summary>
+  /// A 128 character string describing the volume set for this disk
+  /// </summary>
+  public string VolumeSetID = string.Empty;
+
+  /// <summary>
+  /// A 128 character string describing the publisher for this media
+  /// </summary>
+  public string PublisherID = string.Empty;
+
+  /// <summary>
+  /// A 128 character string describing who prepared this media
+  /// </summary>
+  public string PreparerID = string.Empty;
+
+  /// <summary>
+  /// A 128 character string describing the application on this media
+  /// </summary>
+  public string ApplicationID = string.Empty;
+
+  /// <summary>
+  /// A 37 character string describing the copyright of this media
+  /// </summary>
+  public string CopyrightFile = string.Empty;
+
+  /// <summary>
+  /// A 37 character string. ???
+  /// </summary>
+  public string AbstractFile = string.Empty;
+
+  /// <summary>
+  /// A 37 character string. ???
+  /// </summary>
+  public string BiblioFile = string.Empty;
+
+
   private readonly BinaryReader _backingData;
   private readonly Dictionary<int, LogicalSector> _sectorCache = [];
 
@@ -132,6 +168,24 @@ public class ECMAFS
 
     DataRecord root = DataRecord.FromBytes(reader.ReadBytes(dirLength), this);
     DataRecord path = new(pathTableL, pathTableSize, 0, "PathTable", this);
+
+    VolumeSetID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    PublisherID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    PreparerID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    ApplicationID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+
+    CopyrightFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
+    AbstractFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
+    BiblioFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
+
+    //skip 4 timestamps
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
+
+    //skip version and structure byte (always 0x01 0x00)
+    reader.ReadBytes(2);
 
     return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, root, path, this);
   }
