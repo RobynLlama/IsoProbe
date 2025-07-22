@@ -117,22 +117,23 @@ public class ECMAFS
     //skip
     reader.ReadInt16();
 
-    int pathTableSize = reader.ReadInt16();
+    int pathTableSize = reader.ReadInt32();
     //skip
-    reader.ReadInt16();
+    reader.ReadInt32();
 
-    //skip the type L and M path tables for now
-    reader.ReadBytes(16);
+    int pathTableL = reader.ReadInt32();
+    int pathTableLOpt = reader.ReadInt32();
 
-    //skip more bytes??
-    reader.ReadBytes(4);
+    //skip pathTableM
+    reader.ReadBytes(8);
 
     int dirLength = reader.ReadByte() - 1;
     //Console.WriteLine($"Parsing {dirLength} bytes into root record");
 
     DataRecord root = DataRecord.FromBytes(reader.ReadBytes(dirLength), this);
+    DataRecord path = new(pathTableL, pathTableSize, 0, "PathTable", this);
 
-    return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, pathTableSize, root, this);
+    return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, root, path, this);
   }
 
   /// <summary>

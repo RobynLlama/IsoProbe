@@ -44,16 +44,17 @@ public class PrimaryVolumeDescriptor
   public readonly int VolumeSetNumber;
 
   /// <summary>
-  /// The size in bytes of the path table. The path table is currently
-  /// unused in the ECMAFS implementation
-  /// </summary>
-  public readonly int PathTableSize;
-
-  /// <summary>
   /// The data record of the Root record. The Root contains a listing of
   /// every directory and file on the root of the filesystem
   /// </summary>
   public readonly DataRecord RootRecord;
+
+  /// <summary>
+  /// The data record of the path table, a special area that lists
+  /// directories for quick lookup. Good for hot path stuff but
+  /// optional within the spec
+  /// </summary>
+  public readonly DataRecord PathTable;
 
   /// <summary>
   /// A reference to the ECMAFS that owns this PVD
@@ -68,8 +69,8 @@ public class PrimaryVolumeDescriptor
     int logicalBlockSize,
     int volumeSetSize,
     int volumeSetNumber,
-    int pathTableSize,
     DataRecord root,
+    DataRecord pathTable,
     ECMAFS owner
     )
   {
@@ -80,8 +81,8 @@ public class PrimaryVolumeDescriptor
     LogicalBlockSize = logicalBlockSize;
     VolumeSetSize = volumeSetSize;
     VolumeSetNumber = volumeSetNumber;
-    PathTableSize = pathTableSize;
     RootRecord = root;
+    PathTable = pathTable;
     Owner = owner;
   }
 }
