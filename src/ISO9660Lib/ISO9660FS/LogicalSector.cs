@@ -10,6 +10,9 @@ namespace ISO9660Lib.ISO9660FS;
 /// </summary>
 public class LogicalSector
 {
+  /// <summary>
+  /// The index of this sector within its owning ECMAFS
+  /// </summary>
   public readonly int SectorIndex;
 
   /// <summary>

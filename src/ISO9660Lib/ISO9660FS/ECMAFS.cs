@@ -133,6 +133,13 @@ public class ECMAFS
     return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, pathTableSize, root, this);
   }
 
+  /// <summary>
+  /// Creates or returns a cached logical sector by index and size
+  /// </summary>
+  /// <param name="sector">The index of the sector to retrieve</param>
+  /// <param name="size">The size of the sector's extent</param>
+  /// <returns></returns>
+  /// <exception cref="InvalidDataException"></exception>
   public LogicalSector GetSectorLogical(int sector, int size)
   {
     if (!TryGetSectorRaw(sector, out var _raw))

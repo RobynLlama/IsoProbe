@@ -34,6 +34,10 @@ public class DataRecord
   /// </summary>
   public readonly string Identifier;
 
+  /// <summary>
+  /// The sector that this record belongs to. Note that
+  /// it is initialized lazily and may throw if it is invalid
+  /// </summary>
   public LogicalSector OwningSector
   {
     get
@@ -43,6 +47,9 @@ public class DataRecord
     }
   }
 
+  /// <summary>
+  /// The ECMAFS that this record belongs to
+  /// </summary>
   public readonly ECMAFS Owner;
 
   private LogicalSector? _owningSector;
