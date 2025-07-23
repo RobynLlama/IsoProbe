@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using SimpleCommandLib;
 
-namespace PSXtractor.Commands;
+namespace IsoProbe.Commands;
 
 public class CommandPeekFile : ICommandRunner
 {

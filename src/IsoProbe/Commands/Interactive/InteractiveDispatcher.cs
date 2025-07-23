@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using PSXtractor.Context;
+using IsoProbe.Context;
 using SimpleCommandLib;
 
-namespace PSXtractor.Commands;
+namespace IsoProbe.Commands;
 
 public class InteractiveDispatcher : CommandDispatcher
 {

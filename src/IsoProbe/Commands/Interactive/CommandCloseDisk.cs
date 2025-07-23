@@ -1,6 +1,6 @@
 using SimpleCommandLib;
 
-namespace PSXtractor.Commands;
+namespace IsoProbe.Commands;
 
 public class CommandCloseDisk : ICommandRunner
 {

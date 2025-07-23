@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using SimpleCommandLib;
 
-namespace PSXtractor.Commands;
+namespace IsoProbe.Commands;
 
 public class CommandLoadDisk : ICommandRunner
 {

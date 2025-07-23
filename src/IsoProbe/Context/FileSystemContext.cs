@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using ISO9660Lib.ISO9660FS;
 
-namespace PSXtractor.Context;
+namespace IsoProbe.Context;
 
 public class FileSystemContext
 {

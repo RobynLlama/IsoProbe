@@ -1,8 +1,8 @@
 ﻿using System;
 using System.IO;
-using PSXtractor.Commands;
+using IsoProbe.Commands;
 
-namespace PSXtractor
+namespace IsoProbe
 {
   internal class Program
   {
