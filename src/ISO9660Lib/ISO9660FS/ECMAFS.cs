@@ -73,6 +73,7 @@ public class ECMAFS
   /// </summary>
   public string BiblioFile = string.Empty;
 
+  internal LogWriter? _logger;
 
   private readonly BinaryReader _backingData;
   private readonly Dictionary<int, LogicalSector> _sectorCache = [];
@@ -81,9 +82,10 @@ public class ECMAFS
   /// Creates a new ECMAFS from a FileInfo on disk
   /// </summary>
   /// <param name="file">The file to use as the backing data for this ECMAFS</param>
+  /// <param name="logSink">A stream to use the log output</param>
   /// <exception cref="FileNotFoundException"></exception>
   /// <exception cref="InvalidDataException"></exception>
-  public ECMAFS(FileInfo file)
+  public ECMAFS(FileInfo file, Stream? logSink = null)
   {
     if (!file.Exists)
       throw new FileNotFoundException("Unable to read from file", file.Name);
@@ -91,6 +93,9 @@ public class ECMAFS
     FileStream stream = new(file.FullName, FileMode.Open);
     _backingData = new(stream);
     FileSize = stream.Length;
+
+    if (logSink is not null)
+      _logger = new(logSink);
 
     PVD = GetPrimaryVolumeDescriptor();
     SectorCount = PVD.LogicalBlockCount;
