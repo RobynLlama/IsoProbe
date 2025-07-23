@@ -19,6 +19,7 @@ public class InteractiveDispatcher : CommandDispatcher
     TryAddCommand(new CommandListDirectory());
     TryAddCommand(new CommandPeekFile());
     TryAddCommand(new CommandExit());
+    TryAddCommand(new CommandDumpFile());
   }
 
   public override void OnCommandNotFound(string commandName)
