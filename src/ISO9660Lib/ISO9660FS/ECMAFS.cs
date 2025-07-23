@@ -201,16 +201,16 @@ public class ECMAFS
   public DataRecord? GetRecordFromPath(string fullPath)
   {
     //the path MUST start at the root
-    if (!fullPath.StartsWith('/'))
+    if (!fullPath.StartsWith(Path.DirectorySeparatorChar))
       return null;
 
     //we always get the root automatically
-    fullPath = fullPath.TrimStart('/');
+    fullPath = fullPath.TrimStart(Path.DirectorySeparatorChar);
 
     if (fullPath == string.Empty)
       return PVD.RootRecord;
 
-    string[] identifiers = fullPath.Split('/');
+    string[] identifiers = fullPath.Split(Path.DirectorySeparatorChar);
     DataRecord? previous = PVD.RootRecord;
 
     foreach (var item in identifiers)

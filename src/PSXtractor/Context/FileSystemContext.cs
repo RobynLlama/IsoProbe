@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using ISO9660Lib.ISO9660FS;
 
@@ -8,7 +7,7 @@ namespace PSXtractor.Context;
 public class FileSystemContext
 {
   public ECMAFS? LoadedMedia { get; protected set; }
-  public string CurrentDirectory { get; protected set; } = "/";
+  public string CurrentDirectory { get; protected set; } = Path.DirectorySeparatorChar.ToString();
   public DataRecord? CurrentDirectoryRecord { get; protected set; }
 
   public bool LoadMedia(FileInfo info)
@@ -38,7 +37,7 @@ public class FileSystemContext
       return false;
 
     //determine if the change is relative
-    if (!newPath.StartsWith('/'))
+    if (!newPath.StartsWith(Path.DirectorySeparatorChar))
       newPath = Path.Combine(CurrentDirectory, newPath);
 
     //check if the path makes sense
@@ -56,7 +55,7 @@ public class FileSystemContext
 
   internal void Reset()
   {
-    CurrentDirectory = "/";
+    CurrentDirectory = Path.DirectorySeparatorChar.ToString();
     CurrentDirectoryRecord = null;
     LoadedMedia = null;
   }

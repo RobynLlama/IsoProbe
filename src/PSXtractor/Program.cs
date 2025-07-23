@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using ISO9660Lib.ISO9660FS;
 using PSXtractor.Commands;
 
 namespace PSXtractor

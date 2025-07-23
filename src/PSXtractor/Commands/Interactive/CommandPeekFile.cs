@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text;
-using Microsoft.VisualBasic;
 using SimpleCommandLib;
 
 namespace PSXtractor.Commands;
@@ -28,7 +27,7 @@ public class CommandPeekFile : ICommandRunner
 
     string fullIdentifier;
 
-    fullIdentifier = args[0].StartsWith('/')
+    fullIdentifier = args[0].StartsWith(Path.DirectorySeparatorChar)
     ? args[0]
     : Path.Combine(InteractiveDispatcher.Environment.CurrentDirectory, args[0]);
 
