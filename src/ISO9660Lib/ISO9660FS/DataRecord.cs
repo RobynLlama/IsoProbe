@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace ISO9660Lib.ISO9660FS;
@@ -67,6 +68,22 @@ public class DataRecord
     Identifier = identifier;
     FlagIsDirectory = (flags & 0x02) != 0;
     Owner = owner;
+  }
+
+  /// <summary>
+  /// Returns a child record by exact identifier
+  /// </summary>
+  /// <param name="identifier">The identifier of the child record</param>
+  /// <returns>
+  /// <em>DataRecord</em> if one exists under that identifier or
+  /// <em>NULL</em> otherwise
+  /// </returns>
+  public DataRecord? GetChildRecord(string identifier)
+  {
+    if (!FlagIsDirectory)
+      return null;
+
+    return OwningSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
   }
 
   public void DumpFileListing(StringBuilder sb, int indent, bool recursive = true)
