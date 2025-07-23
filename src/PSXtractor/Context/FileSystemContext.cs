@@ -9,14 +9,27 @@ public class FileSystemContext
   public ECMAFS? LoadedMedia { get; protected set; }
   public string CurrentDirectory { get; protected set; } = Path.DirectorySeparatorChar.ToString();
   public DataRecord? CurrentDirectoryRecord { get; protected set; }
+  public bool IsClone { get; protected set; } = false;
+
+  public FileSystemContext Clone() =>
+    new()
+    {
+      LoadedMedia = LoadedMedia,
+      CurrentDirectory = CurrentDirectory,
+      CurrentDirectoryRecord = CurrentDirectoryRecord,
+      IsClone = true
+    };
 
   public bool LoadMedia(FileInfo info)
   {
+    if (IsClone)
+      return false;
+
     if (LoadedMedia is not null)
       UnloadMedia();
     try
     {
-      LoadedMedia = new(info);
+      LoadedMedia = new(info, Console.OpenStandardOutput());
       CurrentDirectoryRecord = LoadedMedia.PVD.RootRecord;
     }
     catch (Exception ex)
@@ -53,6 +66,9 @@ public class FileSystemContext
 
   internal void Reset()
   {
+    if (IsClone)
+      return;
+
     CurrentDirectory = Path.DirectorySeparatorChar.ToString();
     CurrentDirectoryRecord = null;
     LoadedMedia = null;
