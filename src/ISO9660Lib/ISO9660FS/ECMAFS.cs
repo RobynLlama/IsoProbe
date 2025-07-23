@@ -31,7 +31,7 @@ public class ECMAFS
   /// <summary>
   /// The total number of sectors in this filesystem
   /// </summary>
-  public readonly int SectorCount;
+  public readonly uint SectorCount;
 
   /// <summary>
   /// The size of the file read to create this filesystem
@@ -76,7 +76,7 @@ public class ECMAFS
   internal LogWriter? _logger;
 
   private readonly BinaryReader _backingData;
-  private readonly Dictionary<int, LogicalSector> _sectorCache = [];
+  private readonly Dictionary<uint, LogicalSector> _sectorCache = [];
 
   /// <summary>
   /// Creates a new ECMAFS from a FileInfo on disk
@@ -142,36 +142,36 @@ public class ECMAFS
     //skip 8 unused bytes
     reader.ReadBytes(8);
 
-    int logicalBlocks = reader.ReadInt32();
+    uint logicalBlocks = reader.ReadUInt32();
     //skip the second half of the both-endian block
     reader.ReadInt32();
 
     //skip the escape sequences block
     reader.ReadBytes(32);
 
-    int volumeSetSize = reader.ReadInt16();
+    uint volumeSetSize = reader.ReadUInt16();
     //skip
     reader.ReadInt16();
 
-    int volumeSequenceNo = reader.ReadInt16();
+    uint volumeSequenceNo = reader.ReadUInt16();
     //skip
     reader.ReadInt16();
 
-    int logicalBlockSize = reader.ReadInt16();
+    uint logicalBlockSize = reader.ReadUInt16();
     //skip
     reader.ReadInt16();
 
-    int pathTableSize = reader.ReadInt32();
+    uint pathTableSize = reader.ReadUInt32();
     //skip
     reader.ReadInt32();
 
-    int pathTableL = reader.ReadInt32();
-    int pathTableLOpt = reader.ReadInt32();
+    uint pathTableL = reader.ReadUInt32();
+    uint pathTableLOpt = reader.ReadUInt32();
 
     //skip pathTableM
     reader.ReadBytes(8);
 
-    int dirLength = reader.ReadByte() - 1;
+    var dirLength = reader.ReadByte() - 1;
     //Console.WriteLine($"Parsing {dirLength} bytes into root record");
 
     DataRecord root = DataRecord.FromBytes(reader.ReadBytes(dirLength), this);
@@ -242,9 +242,9 @@ public class ECMAFS
   /// <param name="parent">The data record that owns this logical sector</param>
   /// <returns></returns>
   /// <exception cref="InvalidDataException"></exception>
-  public LogicalSector GetSectorLogical(int sector, int size, DataRecord? parent = null)
+  public LogicalSector GetSectorLogical(uint sector, uint size, DataRecord? parent = null)
   {
-    int sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
+    uint sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
 
     if (_sectorCache.TryGetValue(sector, out var data))
     {
@@ -275,7 +275,7 @@ public class ECMAFS
   /// <remarks>
   /// The out RawSector will be null in the event a <em>FALSE</em> value is returned.
   /// </remarks>
-  public bool TryGetSectorRaw(int sector, [NotNullWhen(true)] out PhysicalSector? output)
+  public bool TryGetSectorRaw(uint sector, [NotNullWhen(true)] out PhysicalSector? output)
   {
     output = null;
     var location = sector * SECTOR_SIZE;

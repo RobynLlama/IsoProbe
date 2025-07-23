@@ -13,14 +13,14 @@ public class LogicalSector
   /// <summary>
   /// The index of this sector within its owning ECMAFS
   /// </summary>
-  public readonly int SectorIndex;
+  public readonly uint SectorIndex;
 
   /// <summary>
   /// A list of the sectors this Logical sector uses. A file or
   /// directory listing larger than the ECMA UserData sector size
   /// will be spread out over more than one sector
   /// </summary>
-  public readonly int PhysicalSectorsOccupied;
+  public readonly uint PhysicalSectorsOccupied;
 
   /// <summary>
   /// If this item is contained by a directory record this
@@ -39,8 +39,8 @@ public class LogicalSector
   private bool _directoryContentsFetched = false;
 
   internal LogicalSector(
-    int sectorIndex,
-    int sectorsOccupied,
+    uint sectorIndex,
+    uint sectorsOccupied,
     ECMAFS owner,
     DataRecord? parent = null
   )
@@ -108,7 +108,9 @@ public class LogicalSector
     {
       using var next = items.Dequeue();
       next.Reader.ReadBytes(ECMAFS.HEADER_SIZE);
-      cms.Write(next.Reader.ReadBytes(blockSize));
+      //This should ideally never be so big that it causes an issue
+      //ISO9660 demands sector sizes be 2048 or smaller anyway
+      cms.Write(next.Reader.ReadBytes((int)blockSize));
     }
 
     _fileContentsFetched = true;
@@ -120,7 +122,7 @@ public class LogicalSector
   {
     Queue<PhysicalSector> items = [];
 
-    for (int i = SectorIndex; i < SectorIndex + PhysicalSectorsOccupied; i++)
+    for (uint i = SectorIndex; i < SectorIndex + PhysicalSectorsOccupied; i++)
     {
       if (Owner.TryGetSectorRaw(i, out var raw))
         items.Enqueue(raw);

@@ -14,7 +14,7 @@ public class DataRecord
   /// This the sector ID of the first record containing this
   /// record's actual data
   /// </summary>
-  public readonly int LocationOfExtent;
+  public readonly uint LocationOfExtent;
 
   /// <summary>
   /// The total length (file size) of the record's data. If it is
@@ -22,7 +22,7 @@ public class DataRecord
   /// of the ECMAFS that owns it then the data will be spread across
   /// multiple logical blocks
   /// </summary>
-  public readonly int DataLength;
+  public readonly uint DataLength;
 
   /// <summary>
   /// Whether or not this record represents a directory
@@ -56,8 +56,8 @@ public class DataRecord
   private LogicalSector? _owningSector;
 
   internal DataRecord(
-    int locationOfExtent,
-    int dataLength,
+    uint locationOfExtent,
+    uint dataLength,
     int flags,
     string identifier,
     ECMAFS owner
@@ -135,10 +135,10 @@ public class DataRecord
       reader.ReadBytes(extAttrLength);
     }
 
-    int extentLocation = reader.ReadInt32();
-    reader.ReadInt32();
-    int dataLength = reader.ReadInt32();
-    reader.ReadInt32();
+    uint extentLocation = reader.ReadUInt32();
+    reader.ReadUInt32();
+    uint dataLength = reader.ReadUInt32();
+    reader.ReadUInt32();
 
     //skip timestamp for now
     reader.ReadBytes(7);

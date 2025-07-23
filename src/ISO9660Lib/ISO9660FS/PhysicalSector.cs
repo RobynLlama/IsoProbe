@@ -17,14 +17,14 @@ public class PhysicalSector : IDisposable
   /// <summary>
   /// Which sector this RawSector was read from
   /// </summary>
-  public readonly int SectorIndex;
+  public readonly uint SectorIndex;
 
   /// <summary>
   /// A BinaryReader to read from the raw sector
   /// </summary>
   public BinaryReader Reader;
 
-  internal PhysicalSector(ECMAFS owner, int sectorIndex, BinaryReader reader)
+  internal PhysicalSector(ECMAFS owner, uint sectorIndex, BinaryReader reader)
   {
     Owner = owner;
     SectorIndex = sectorIndex;

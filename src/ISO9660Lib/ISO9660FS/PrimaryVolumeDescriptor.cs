@@ -24,24 +24,24 @@ public class PrimaryVolumeDescriptor
   /// <summary>
   /// How many sectors total are in this ECMAFS
   /// </summary>
-  public readonly int LogicalBlockCount;
+  public readonly uint LogicalBlockCount;
 
   /// <summary>
   /// The size of the user data for each sector. See <seealso cref="ECMAFS.SECTOR_SIZE"/>
   /// for the constant physical size of each sector. All space on a sector not
   /// claimed by the header or user data is assumed to be error correcting codes
   /// </summary>
-  public readonly int LogicalBlockSize;
+  public readonly uint LogicalBlockSize;
 
   /// <summary>
   /// The number of total volumes in this ECMAFS volume set. Nearly always 1
   /// </summary>
-  public readonly int VolumeSetSize;
+  public readonly uint VolumeSetSize;
 
   /// <summary>
   /// Which volume in the set this specific volume is. Nearly always 1
   /// </summary>
-  public readonly int VolumeSetNumber;
+  public readonly uint VolumeSetNumber;
 
   /// <summary>
   /// The data record of the Root record. The Root contains a listing of
@@ -65,10 +65,10 @@ public class PrimaryVolumeDescriptor
     int volumeDescriptorVersion,
     string systemID,
     string volumeID,
-    int logicalBlockCount,
-    int logicalBlockSize,
-    int volumeSetSize,
-    int volumeSetNumber,
+    uint logicalBlockCount,
+    uint logicalBlockSize,
+    uint volumeSetSize,
+    uint volumeSetNumber,
     DataRecord root,
     DataRecord pathTable,
     ECMAFS owner
