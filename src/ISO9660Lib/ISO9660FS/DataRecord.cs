@@ -86,6 +86,12 @@ public class DataRecord
     return OwningSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
   }
 
+  /// <summary>
+  /// Dumps the file listing of the record onto a StringBuilder for easy viewing
+  /// </summary>
+  /// <param name="sb">The StringBuilder to use</param>
+  /// <param name="indent">How far indented each item should be</param>
+  /// <param name="recursive">If we should descend into any discovered directories</param>
   public void DumpFileListing(StringBuilder sb, int indent, bool recursive = true)
   {
     if (!FlagIsDirectory)
