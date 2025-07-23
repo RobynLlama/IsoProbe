@@ -25,12 +25,7 @@ public class CommandPeekFile : ICommandRunner
       return false;
     }
 
-    string fullIdentifier;
-
-    fullIdentifier = args[0].StartsWith(Path.DirectorySeparatorChar)
-    ? args[0]
-    : Path.Combine(InteractiveDispatcher.Environment.CurrentDirectory, args[0]);
-
+    var fullIdentifier = InteractiveDispatcher.Environment.ResolveUserPath(args[0]);
     var item = InteractiveDispatcher.Environment.LoadedMedia.GetRecordFromPath(fullIdentifier);
 
     if (item is null || item.FlagIsDirectory)

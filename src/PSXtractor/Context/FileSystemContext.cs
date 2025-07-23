@@ -36,9 +36,7 @@ public class FileSystemContext
     if (LoadedMedia is null)
       return false;
 
-    //determine if the change is relative
-    if (!newPath.StartsWith(Path.DirectorySeparatorChar))
-      newPath = Path.Combine(CurrentDirectory, newPath);
+    newPath = ResolveUserPath(newPath);
 
     //check if the path makes sense
     var record = LoadedMedia.GetRecordFromPath(newPath);
@@ -58,5 +56,28 @@ public class FileSystemContext
     CurrentDirectory = Path.DirectorySeparatorChar.ToString();
     CurrentDirectoryRecord = null;
     LoadedMedia = null;
+  }
+
+  /// <summary>
+  /// Processes a user-inputted path string by removing surrounding quotes if present,
+  /// and converting relative paths to absolute paths based on the current environment directory.
+  /// </summary>
+  /// <param name="inputPath">The user-inputted path string, which may be quoted and/or relative.</param>
+  /// <returns>The absolute, unquoted path string.</returns>
+  public string ResolveUserPath(string inputPath)
+  {
+    string fullIdentifier;
+
+    //Trim quotes if needed
+    fullIdentifier = inputPath.StartsWith('"') && inputPath.EndsWith('"') ? inputPath.Trim('"') : inputPath;
+
+    //Resolve a relative path
+    if (!fullIdentifier.StartsWith(Path.DirectorySeparatorChar))
+      fullIdentifier = Path.Combine(CurrentDirectory, fullIdentifier);
+
+    //Resolve symbols in path such as '.' and '..'
+    fullIdentifier = Path.GetFullPath(fullIdentifier);
+
+    return fullIdentifier;
   }
 }
