@@ -118,10 +118,19 @@ public class ECMAFS
     int version = reader.ReadByte();
 
     if (vType != 1)
-      throw new InvalidDataException($"Expected a PVD record (0x01) at sector 16, type: {vType}, unable to continue!");
+    {
+      var reason = $"Expected a PVD record (0x01) at sector 16, type: {vType}, unable to continue!";
+      _logger?.LogError(reason);
+      throw new InvalidDataException(reason);
+    }
+
 
     if (!ident.Equals("cd001", StringComparison.InvariantCultureIgnoreCase))
-      throw new InvalidDataException($"This application only supports properly formatted ISO-9660 volumes. Expected \"CD001\" Identifier: {ident}");
+    {
+      var reason = $"PVD is invalid, Expected \"CD001\" Identifier: {ident}";
+      _logger?.LogError(reason);
+      throw new InvalidDataException(reason);
+    }
 
     //skip the reserved byte
     //SHOULD always be 0x00 but we're ignoring it for now
@@ -203,6 +212,8 @@ public class ECMAFS
     if (!fullPath.StartsWith(Path.DirectorySeparatorChar))
       return null;
 
+    _logger?.LogMessage($"Retrieving: {fullPath}");
+
     //we always get the root automatically
     fullPath = fullPath.TrimStart(Path.DirectorySeparatorChar);
 
@@ -228,16 +239,25 @@ public class ECMAFS
   /// </summary>
   /// <param name="sector">The index of the sector to retrieve</param>
   /// <param name="size">The size of the sector's extent</param>
+  /// <param name="parent">The data record that owns this logical sector</param>
   /// <returns></returns>
   /// <exception cref="InvalidDataException"></exception>
-  public LogicalSector GetSectorLogical(int sector, int size)
+  public LogicalSector GetSectorLogical(int sector, int size, DataRecord? parent = null)
   {
     int sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
 
     if (_sectorCache.TryGetValue(sector, out var data))
-      return data;
+    {
+      _logger?.LogMessage($"Retrieving logical sector #{sector} from cache");
 
-    LogicalSector sec = new(sector, sectorsOccupied, this);
+      if (data.Parent != parent)
+        _logger?.LogError($"Sector #{sector} has multiple parents. ISO9660Lib does not yet support this behavior. This may cause further errors when traversing the filesystem upwards!\nClaimants:\n  {data.Parent}\n  {parent}");
+
+      return data;
+    }
+
+    _logger?.LogMessage($"Retrieving new logical sector #{sector}");
+    LogicalSector sec = new(sector, sectorsOccupied, this, parent);
     _sectorCache.Add(sector, sec);
 
     return sec;
@@ -259,9 +279,14 @@ public class ECMAFS
   {
     output = null;
     var location = sector * SECTOR_SIZE;
+    _logger?.LogMessage($"Retrieving sector #{sector:N0}");
 
     if (location + SECTOR_SIZE > FileSize)
+    {
+      _logger?.LogError($"Sector is out of bounds: {location:N0} / {FileSize:N0}");
       return false;
+    }
+
 
     _backingData.BaseStream.Seek(location, SeekOrigin.Begin);
 

@@ -57,7 +57,12 @@ public class LogicalSector
   public List<DataRecord> GetDirectoryContents()
   {
     if (_directoryContentsFetched)
+    {
+      Owner._logger?.LogMessage($"Retrieving cached directory {Parent?.Identifier}");
       return _directoryContentsCache;
+    }
+
+    Owner._logger?.LogMessage($"Retrieving new directory contents");
 
     var data = GetFileContents();
     using MemoryStream ms = new(data);
