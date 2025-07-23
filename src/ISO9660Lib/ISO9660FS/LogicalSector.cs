@@ -98,19 +98,24 @@ public class LogicalSector
     if (_fileContentsFetched)
       return _fileContents;
 
-    var dataToRead = PhysicalSectorsOccupied * Owner.PVD.LogicalBlockSize;
+    var blockSize = Owner.PVD.LogicalBlockSize;
+    var dataToRead = Parent?.DataLength ?? PhysicalSectorsOccupied * blockSize;
     _fileContents = new byte[dataToRead];
     using MemoryStream cms = new(_fileContents);
     var items = GetOccupiedSectors();
-    var blockSize = Owner.PVD.LogicalBlockSize;
 
     while (items.Count > 0)
     {
       using var next = items.Dequeue();
+      var nextRead = dataToRead;
+      if (nextRead > blockSize)
+        nextRead = blockSize;
+
       next.Reader.ReadBytes(ECMAFS.HEADER_SIZE);
       //This should ideally never be so big that it causes an issue
       //ISO9660 demands sector sizes be 2048 or smaller anyway
-      cms.Write(next.Reader.ReadBytes((int)blockSize));
+      cms.Write(next.Reader.ReadBytes((int)nextRead));
+      dataToRead -= nextRead;
     }
 
     _fileContentsFetched = true;
