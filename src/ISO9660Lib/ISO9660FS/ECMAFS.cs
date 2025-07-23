@@ -191,6 +191,40 @@ public class ECMAFS
   }
 
   /// <summary>
+  /// Gets a Data Record by its fully qualified identifier
+  /// </summary>
+  /// <param name="fullPath">The full path to the record</param>
+  /// <returns>
+  /// <em>DataRecord</em> if the item exists or
+  /// <em>NULL</em> if it does not
+  /// </returns>
+  public DataRecord? GetRecordFromPath(string fullPath)
+  {
+    //the path MUST start at the root
+    if (!fullPath.StartsWith('/'))
+      return null;
+
+    //we always get the root automatically
+    fullPath = fullPath.TrimStart('/');
+
+    if (fullPath == string.Empty)
+      return PVD.RootRecord;
+
+    string[] identifiers = fullPath.Split('/');
+    DataRecord? previous = PVD.RootRecord;
+
+    foreach (var item in identifiers)
+    {
+      if (previous is null)
+        break;
+
+      previous = previous.GetChildRecord(item);
+    }
+
+    return previous;
+  }
+
+  /// <summary>
   /// Creates or returns a cached logical sector by index and size
   /// </summary>
   /// <param name="sector">The index of the sector to retrieve</param>
