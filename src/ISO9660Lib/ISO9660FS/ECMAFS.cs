@@ -96,12 +96,6 @@ public class ECMAFS
     SectorCount = PVD.LogicalBlockCount;
   }
 
-  /// <summary>
-  /// Creates a new ECMAFS from a file on disk
-  /// </summary>
-  /// <param name="fileName">The name of the file to use as backing data</param>
-  public ECMAFS(string fileName) : this(new FileInfo(fileName)) { }
-
   internal PrimaryVolumeDescriptor GetPrimaryVolumeDescriptor()
   {
     if (!TryGetSectorRaw(16, out var _sector))
