@@ -43,7 +43,7 @@ public class DataRecord
   {
     get
     {
-      _owningSector ??= Owner.GetSectorLogical(LocationOfExtent, DataLength);
+      _owningSector ??= Owner.GetSectorLogical(LocationOfExtent, DataLength, this);
       return _owningSector;
     }
   }

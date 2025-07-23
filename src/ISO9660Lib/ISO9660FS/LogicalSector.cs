@@ -41,12 +41,14 @@ public class LogicalSector
   internal LogicalSector(
     int sectorIndex,
     int sectorsOccupied,
-    ECMAFS owner
+    ECMAFS owner,
+    DataRecord? parent = null
   )
   {
     SectorIndex = sectorIndex;
     PhysicalSectorsOccupied = sectorsOccupied;
     Owner = owner;
+    Parent = parent;
   }
 
   /// <summary>
