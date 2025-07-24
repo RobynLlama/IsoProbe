@@ -156,7 +156,16 @@ public class DataRecord
         identifier = "..";
     }
 
-    identifier ??= Encoding.ASCII.GetString(reader.ReadBytes(length));
+    if (identifier is null)
+    {
+      byte[] rawId = reader.ReadBytes(length);
+
+      if (owningFS.IsJolietExtension)
+        identifier = Encoding.BigEndianUnicode.GetString(rawId);
+      else
+        identifier = Encoding.ASCII.GetString(rawId);
+    }
+
 
     if (extAttrLength > 0)
     {

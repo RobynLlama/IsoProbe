@@ -24,6 +24,12 @@ public class ECMAFS
   public bool RawSectors { get; private set; } = false;
 
   /// <summary>
+  /// This flag will be set if an SVDs are present which indicate
+  /// Joliet extensions roughly 100% of the time
+  /// </summary>
+  public bool IsJolietExtension { get; private set; } = false;
+
+  /// <summary>
   /// The size of the header information in each sector, this only
   /// applies if the disk is a raw dump with header information.
   /// Its 24 bytes if the disk has a raw header on each sector
@@ -117,6 +123,7 @@ public class ECMAFS
       else if (vd is SupplementalVolumeDescriptor svd)
       {
         PVD = svd;
+        IsJolietExtension = true;
         _logger?.LogMessage("Assigned PVD from svd");
       }
 
