@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace ISO9660Lib.ISO9660FS;
 
 /// <summary>
 /// A top level class representing an entire ECMA-119 Filesystem
-/// as described by ISo-9660 (Incomplete)
+/// as described by ISO-9660 (Incomplete)
 /// </summary>
 public class ECMAFS
 {
@@ -22,6 +23,15 @@ public class ECMAFS
   /// defined within the standard and never changes
   /// </summary>
   public const int SECTOR_SIZE = 2352;
+
+  /// <summary>
+  /// A constant value used to identify a MODE 1
+  /// disk header
+  /// </summary>
+  public readonly static byte[] MODE_1_SYNC_PATTERN =
+  [
+    0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
+  ];
 
   /// <summary>
   /// The primary volume descriptor record for this filesystem
@@ -117,8 +127,29 @@ public class ECMAFS
 
     BinaryReader reader = sector.Reader;
 
-    //discard the header
-    reader.ReadBytes(HEADER_SIZE);
+    //read the MODE 1 header
+    var header = reader.ReadBytes(12);
+    //skip MSF
+    reader.ReadBytes(3);
+    var mode = reader.ReadByte();
+    //skip reserved bytes
+    reader.ReadBytes(8);
+
+    if (!header.SequenceEqual(MODE_1_SYNC_PATTERN))
+    {
+      var reason = "Unable to match SYNC pattern for Mode 1 or 2 disks, IsoProbe only supports ISO9660 filesystems";
+      _logger?.LogError(reason);
+      throw new InvalidOperationException(reason);
+    }
+
+    if (mode > 0x02)
+    {
+      var reason = $"IsoProbe only supports mode 1 or 2 disks, found mode: {(int)mode}";
+      _logger?.LogError(reason);
+      throw new InvalidOperationException(reason);
+    }
+
+    _logger?.LogMessage($"Sync pattern established, PVD is mode {(int)mode}");
 
     int vType = reader.ReadByte();
     string ident = Encoding.ASCII.GetString(reader.ReadBytes(5));
