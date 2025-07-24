@@ -44,19 +44,6 @@ public class PrimaryVolumeDescriptor
   public readonly uint VolumeSetNumber;
 
   /// <summary>
-  /// The data record of the Root record. The Root contains a listing of
-  /// every directory and file on the root of the filesystem
-  /// </summary>
-  public readonly DataRecord RootRecord;
-
-  /// <summary>
-  /// The data record of the path table, a special area that lists
-  /// directories for quick lookup. Good for hot path stuff but
-  /// optional within the spec
-  /// </summary>
-  public readonly DataRecord PathTable;
-
-  /// <summary>
   /// A reference to the ECMAFS that owns this PVD
   /// </summary>
   public readonly ECMAFS Owner;
@@ -69,8 +56,6 @@ public class PrimaryVolumeDescriptor
     uint logicalBlockSize,
     uint volumeSetSize,
     uint volumeSetNumber,
-    DataRecord root,
-    DataRecord pathTable,
     ECMAFS owner
     )
   {
@@ -81,8 +66,6 @@ public class PrimaryVolumeDescriptor
     LogicalBlockSize = logicalBlockSize;
     VolumeSetSize = volumeSetSize;
     VolumeSetNumber = volumeSetNumber;
-    RootRecord = root;
-    PathTable = pathTable;
     Owner = owner;
   }
 }

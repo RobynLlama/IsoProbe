@@ -29,6 +29,19 @@ public class ECMAFS
   public readonly PrimaryVolumeDescriptor PVD;
 
   /// <summary>
+  /// The data record of the Root record. The Root contains a listing of
+  /// every directory and file on the root of the filesystem
+  /// </summary>
+  public readonly DataRecord RootRecord;
+
+  /// <summary>
+  /// The data record of the path table, a special area that lists
+  /// directories for quick lookup. Good for hot path stuff but
+  /// optional within the spec
+  /// </summary>
+  public readonly DataRecord PathTable;
+
+  /// <summary>
   /// The total number of sectors in this filesystem
   /// </summary>
   public readonly uint SectorCount;
@@ -97,12 +110,6 @@ public class ECMAFS
     if (logSink is not null)
       _logger = new(logSink);
 
-    PVD = GetPrimaryVolumeDescriptor();
-    SectorCount = PVD.LogicalBlockCount;
-  }
-
-  internal PrimaryVolumeDescriptor GetPrimaryVolumeDescriptor()
-  {
     if (!TryGetSectorRaw(16, out var _sector))
       throw new InvalidDataException($"Unable to fetch sector 16, ECMAFS is invalid or damaged!");
 
@@ -174,8 +181,7 @@ public class ECMAFS
     var dirLength = reader.ReadByte() - 1;
     //Console.WriteLine($"Parsing {dirLength} bytes into root record");
 
-    DataRecord root = DataRecord.FromBytes(reader.ReadBytes(dirLength), this);
-    DataRecord path = new(pathTableL, pathTableSize, 0, "PathTable", this);
+    byte[] rootData = reader.ReadBytes(dirLength);
 
     VolumeSetID = Encoding.ASCII.GetString(reader.ReadBytes(128));
     PublisherID = Encoding.ASCII.GetString(reader.ReadBytes(128));
@@ -195,7 +201,12 @@ public class ECMAFS
     //skip version and structure byte (always 0x01 0x00)
     reader.ReadBytes(2);
 
-    return new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, root, path, this);
+    PVD = new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, this);
+
+    RootRecord = DataRecord.FromBytes(rootData, this);
+    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", this);
+
+    SectorCount = PVD.LogicalBlockCount;
   }
 
   /// <summary>
@@ -218,10 +229,10 @@ public class ECMAFS
     fullPath = fullPath.TrimStart(Path.DirectorySeparatorChar);
 
     if (fullPath == string.Empty)
-      return PVD.RootRecord;
+      return RootRecord;
 
     string[] identifiers = fullPath.Split(Path.DirectorySeparatorChar);
-    DataRecord? previous = PVD.RootRecord;
+    DataRecord? previous = RootRecord;
 
     foreach (var item in identifiers)
     {
