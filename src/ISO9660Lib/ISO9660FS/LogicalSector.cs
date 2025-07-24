@@ -81,16 +81,28 @@ public class LogicalSector
     return _directoryContentsCache;
   }
 
-  internal byte[] GetFileContents()
+  internal byte[] GetFileContents(uint? requestedRead = null)
   {
-    if (_fileContentsFetched)
-      return _fileContents;
-
     var blockSize = Owner.PVD.LogicalBlockSize;
-    var dataToRead = Parent?.DataLength ?? PhysicalSectorsOccupied * blockSize;
-    _fileContents = new byte[dataToRead];
-    using MemoryStream cms = new(_fileContents);
-    var items = GetOccupiedSectors();
+    var totalSize = Parent?.DataLength ?? PhysicalSectorsOccupied * blockSize;
+    var dataToRead = requestedRead ?? totalSize;
+
+    if (dataToRead > totalSize)
+      dataToRead = totalSize;
+
+    if (_fileContentsFetched && requestedRead <= _fileContents.Length)
+    {
+      using MemoryStream c = new(_fileContents);
+      using BinaryReader cache = new(c);
+      Owner._logger?.LogMessage("Cache hit on contents");
+      return cache.ReadBytes((int)requestedRead);
+    }
+
+    var contents = new byte[dataToRead];
+    using MemoryStream cms = new(contents);
+
+    uint sectorsOccupied = (dataToRead + Owner.PVD.LogicalBlockSize - 1) / Owner.PVD.LogicalBlockSize;
+    var items = GetOccupiedSectors(sectorsOccupied);
 
     while (items.Count > 0)
     {
@@ -105,18 +117,29 @@ public class LogicalSector
       //ISO9660 demands sector sizes be 2048 or smaller anyway
       cms.Write(next.Reader.ReadBytes((int)nextRead));
       dataToRead -= nextRead;
+      next.Dispose();
+
+      if (dataToRead == 0)
+        break;
     }
 
-    _fileContentsFetched = true;
+    //only cache reads items less than 5kb
+    if (contents.Length < 5000)
+    {
+      _fileContentsFetched = true;
+      _fileContents = contents;
+    }
 
-    return _fileContents;
+    return contents;
   }
 
-  internal Queue<PhysicalSector> GetOccupiedSectors()
+  internal Queue<PhysicalSector> GetOccupiedSectors(uint fetch = 0)
   {
     Queue<PhysicalSector> items = [];
+    if (fetch == 0)
+      fetch = PhysicalSectorsOccupied;
 
-    for (uint i = SectorIndex; i < SectorIndex + PhysicalSectorsOccupied; i++)
+    for (uint i = SectorIndex; i < SectorIndex + fetch; i++)
     {
       if (Owner.TryGetSectorRaw(i, out var raw))
         items.Enqueue(raw);

@@ -53,14 +53,11 @@ public class CommandPeekFile : ICommandRunner
       return false;
     }
 
-    using MemoryStream contents = new(item.GetFileContents());
-    using BinaryReader reader = new(contents);
+    uint dataToRead = item.DataLength > 127u
+    ? 128u
+    : item.DataLength;
 
-    int dataToRead = contents.Length > 127
-    ? 128
-    : (int)contents.Length;
-
-    byte[] data = reader.ReadBytes(dataToRead);
+    byte[] data = item.GetFileContents(dataToRead);
 
     Console.WriteLine($"Dumping: {item.FullyQualifiedIdentifier}");
     Console.WriteLine("----------");

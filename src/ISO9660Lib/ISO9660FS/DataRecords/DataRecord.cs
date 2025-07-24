@@ -131,7 +131,7 @@ public class DataRecord
   /// </summary>
   /// <returns></returns>
   /// <exception cref="InvalidDataException"></exception>
-  public byte[] GetFileContents()
+  public byte[] GetFileContents(uint? requestedRead = null)
   {
     if (FlagIsMultiExtent)
     {
@@ -139,7 +139,7 @@ public class DataRecord
       return [];
     }
 
-    return ExtentSector.GetFileContents();
+    return ExtentSector.GetFileContents(requestedRead);
   }
 
   internal static DataRecord FromBytes(byte[] data, LogicalSector? containingSector, ECMAFS owningFS)
