@@ -9,7 +9,7 @@ public class CommandDumpFile : ICommandRunner
 {
   public string CommandName => "fileDump";
 
-  public string CommandUsage => "Outputs the given file to the given location on the host filesystem.\n  Usage: fileDump <file> <saveLocation>";
+  public string CommandUsage => "Outputs the given file to the given location on the host filesystem. *WARNING* Will overwrite local files without asking!\n  Usage: fileDump <file> <saveLocation>";
 
   public bool Execute(string[] args)
   {
