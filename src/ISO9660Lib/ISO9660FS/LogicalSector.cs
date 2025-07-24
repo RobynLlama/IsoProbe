@@ -79,7 +79,7 @@ public class LogicalSector
         continue;
 
       byte[] input = reader.ReadBytes(size);
-      _directoryContentsCache.Add(DataRecord.FromBytes(input, Owner));
+      _directoryContentsCache.Add(DataRecord.FromBytes(input, this, Owner));
     }
 
     _directoryContentsFetched = true;

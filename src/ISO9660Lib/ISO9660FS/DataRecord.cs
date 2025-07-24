@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -31,12 +32,24 @@ public class DataRecord
 
   /// <summary>
   /// The identifier for this record, eg: the file or
-  /// directory name
+  /// directory name without the version field
   /// </summary>
   public readonly string Identifier;
 
   /// <summary>
-  /// The sector that this record belongs to. Note that
+  /// The full identifier for this item leading all the way
+  /// back up to the volume root. EG: "/SOUNDS/YAY.WAV"
+  /// </summary>
+  public readonly string FullyQualifiedIdentifier;
+
+  /// <summary>
+  /// The version field of the record's identifier, eg
+  /// the part after the semicolon in "FILE.BIN;1"
+  /// </summary>
+  public readonly int RecordVersion;
+
+  /// <summary>
+  /// The sector that this record points to. Note that
   /// it is initialized lazily and may throw if it is invalid
   /// </summary>
   public LogicalSector ExtentSector
@@ -47,6 +60,13 @@ public class DataRecord
       return _owningSector;
     }
   }
+
+  /// <summary>
+  /// The sector that this record was defined in. Used
+  /// for traversing up the file tree. Will be null on
+  /// the volume root
+  /// </summary>
+  public readonly LogicalSector? ContainingSector;
 
   /// <summary>
   /// The ECMAFS that this record belongs to
@@ -60,14 +80,35 @@ public class DataRecord
     uint dataLength,
     int flags,
     string identifier,
+    LogicalSector? containedBy,
     ECMAFS owner
   )
   {
     LocationOfExtent = locationOfExtent;
     DataLength = dataLength;
-    Identifier = identifier;
     FlagIsDirectory = (flags & 0x02) != 0;
+    Identifier = identifier;
+    ContainingSector = containedBy;
     Owner = owner;
+
+    if (identifier.Contains(';'))
+    {
+      var semi = identifier.LastIndexOf(';');
+
+      if (int.TryParse(identifier[semi..], out var _ver))
+        RecordVersion = _ver;
+
+      Identifier = identifier[..semi];
+    }
+
+
+    if (ContainingSector is null || ContainingSector.Parent is null)
+      FullyQualifiedIdentifier = Identifier;
+    else
+    {
+      var parentFQI = ContainingSector.Parent.FullyQualifiedIdentifier;
+      FullyQualifiedIdentifier = Path.Combine(parentFQI, Identifier);
+    }
   }
 
   /// <summary>
@@ -122,7 +163,7 @@ public class DataRecord
     }
   }
 
-  internal static DataRecord FromBytes(byte[] data, ECMAFS owner)
+  internal static DataRecord FromBytes(byte[] data, LogicalSector? containingSector, ECMAFS owningFS)
   {
     using MemoryStream ms = new(data);
     using BinaryReader reader = new(ms);
@@ -167,7 +208,7 @@ public class DataRecord
 
     identifier ??= Encoding.ASCII.GetString(reader.ReadBytes(length));
 
-    return new(extentLocation, dataLength, flags, identifier, owner);
+    return new(extentLocation, dataLength, flags, identifier, containingSector, owningFS);
   }
 
   /// <summary>

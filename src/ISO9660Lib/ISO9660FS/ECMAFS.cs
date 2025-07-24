@@ -203,8 +203,8 @@ public class ECMAFS
 
     PVD = new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, this);
 
-    RootRecord = DataRecord.FromBytes(rootData, this);
-    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", this);
+    RootRecord = DataRecord.FromBytes(rootData, null, this);
+    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", null, this);
 
     SectorCount = PVD.LogicalBlockCount;
   }
