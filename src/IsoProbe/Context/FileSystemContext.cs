@@ -8,7 +8,7 @@ public class FileSystemContext
 {
   public ECMAFS? LoadedMedia { get; protected set; }
   public string CurrentDirectory { get; protected set; } = Path.DirectorySeparatorChar.ToString();
-  public DataRecord? CurrentDirectoryRecord { get; protected set; }
+  public DirectoryRecord? CurrentDirectoryRecord { get; protected set; }
   public bool IsClone { get; protected set; } = false;
 
   public FileSystemContext Clone() =>
@@ -54,10 +54,10 @@ public class FileSystemContext
     //check if the path makes sense
     var record = LoadedMedia.GetRecordFromPath(newPath);
 
-    if (record is not null && record.FlagIsDirectory)
+    if (record is DirectoryRecord dir)
     {
       CurrentDirectory = Path.GetFullPath(newPath);
-      CurrentDirectoryRecord = record;
+      CurrentDirectoryRecord = dir;
       return true;
     }
 

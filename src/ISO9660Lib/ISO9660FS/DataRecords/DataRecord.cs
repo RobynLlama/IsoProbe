@@ -1,6 +1,4 @@
-using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace ISO9660Lib.ISO9660FS;
@@ -62,6 +60,12 @@ public class DataRecord
   }
 
   /// <summary>
+  /// This is where extended record information is stored.
+  /// It rarely exists
+  /// </summary>
+  public readonly ExtendedAttributeRecord? ExtendedAttributes;
+
+  /// <summary>
   /// The sector that this record was defined in. Used
   /// for traversing up the file tree. Will be null on
   /// the volume root
@@ -81,6 +85,7 @@ public class DataRecord
     int flags,
     string identifier,
     LogicalSector? containedBy,
+    ExtendedAttributeRecord? ear,
     ECMAFS owner
   )
   {
@@ -89,6 +94,7 @@ public class DataRecord
     FlagIsDirectory = (flags & 0x02) != 0;
     Identifier = identifier;
     ContainingSector = containedBy;
+    ExtendedAttributes = ear;
     Owner = owner;
 
     if (identifier.Contains(';'))
@@ -111,70 +117,13 @@ public class DataRecord
     }
   }
 
-  /// <summary>
-  /// Returns a child record by exact identifier
-  /// </summary>
-  /// <param name="identifier">The identifier of the child record</param>
-  /// <returns>
-  /// <em>DataRecord</em> if one exists under that identifier or
-  /// <em>NULL</em> otherwise
-  /// </returns>
-  public DataRecord? GetChildRecord(string identifier)
-  {
-    if (!FlagIsDirectory)
-      return null;
-
-    return ExtentSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
-  }
-
-  /// <summary>
-  /// Dumps the file listing of the record onto a StringBuilder for easy viewing
-  /// </summary>
-  /// <param name="sb">The StringBuilder to use</param>
-  /// <param name="indent">How far indented each item should be</param>
-  /// <param name="recursive">If we should descend into any discovered directories</param>
-  public void DumpFileListing(StringBuilder sb, int indent, bool recursive = true)
-  {
-    if (!FlagIsDirectory)
-      return;
-
-    string padding = new(' ', indent * 2);
-
-    var items = ExtentSector.GetDirectoryContents();
-
-    sb.Append(padding);
-    sb.AppendLine(ToString());
-
-    foreach (var item in items)
-    {
-      if (item.Identifier == "." || item.Identifier == "..")
-        continue;
-
-      if (item.FlagIsDirectory && recursive)
-      {
-        //don't print anything just recurse
-        item.DumpFileListing(sb, indent + 1, true);
-        continue;
-      }
-
-      sb.Append(padding);
-      sb.Append(padding);
-      sb.AppendLine(item.ToString());
-    }
-  }
-
   internal static DataRecord FromBytes(byte[] data, LogicalSector? containingSector, ECMAFS owningFS)
   {
     using MemoryStream ms = new(data);
     using BinaryReader reader = new(ms);
 
     byte extAttrLength = reader.ReadByte();
-
-    if (extAttrLength > 0)
-    {
-      //Skip Extended Attribute Record bytes if present
-      reader.ReadBytes(extAttrLength);
-    }
+    ExtendedAttributeRecord? ear = null;
 
     uint extentLocation = reader.ReadUInt32();
     reader.ReadUInt32();
@@ -185,6 +134,7 @@ public class DataRecord
     reader.ReadBytes(7);
 
     int flags = reader.ReadByte();
+    bool isDir = (flags & 0x02) != 0;
 
     //skip interleave info for now
     reader.ReadBytes(2);
@@ -208,7 +158,16 @@ public class DataRecord
 
     identifier ??= Encoding.ASCII.GetString(reader.ReadBytes(length));
 
-    return new(extentLocation, dataLength, flags, identifier, containingSector, owningFS);
+    if (extAttrLength > 0)
+    {
+      var earSize = (extAttrLength + owningFS.PVD.LogicalBlockSize - 1) / owningFS.PVD.LogicalBlockSize;
+      ear = new(extentLocation - earSize, extAttrLength, $"{identifier}-EAR", containingSector, owningFS);
+    }
+
+    if (isDir)
+      return new DirectoryRecord(extentLocation, dataLength, flags, identifier, containingSector, ear, owningFS);
+
+    return new(extentLocation, dataLength, flags, identifier, containingSector, ear, owningFS);
   }
 
   /// <summary>

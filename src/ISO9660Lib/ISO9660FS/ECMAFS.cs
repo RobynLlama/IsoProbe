@@ -55,14 +55,14 @@ public class ECMAFS
   /// The data record of the Root record. The Root contains a listing of
   /// every directory and file on the root of the filesystem
   /// </summary>
-  public readonly DataRecord RootRecord;
+  public readonly DirectoryRecord RootRecord;
 
   /// <summary>
   /// The data record of the path table, a special area that lists
   /// directories for quick lookup. Good for hot path stuff but
   /// optional within the spec
   /// </summary>
-  public readonly DataRecord PathTable;
+  public readonly DirectoryRecord PathTable;
 
   /// <summary>
   /// The total number of sectors in this filesystem
@@ -231,8 +231,11 @@ public class ECMAFS
 
     PVD = new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, this);
 
-    RootRecord = DataRecord.FromBytes(rootData, null, this);
-    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", null, this);
+    if (DataRecord.FromBytes(rootData, null, this) is not DirectoryRecord rootRec)
+      throw new InvalidDataException("Unable to parse the root record");
+
+    RootRecord = rootRec;
+    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", null, null, this);
 
     SectorCount = PVD.LogicalBlockCount;
 
@@ -331,10 +334,13 @@ public class ECMAFS
 
     foreach (var item in identifiers)
     {
-      if (previous is null)
+      if (previous is not DirectoryRecord dirItem)
+      {
+        previous = null;
         break;
+      }
 
-      previous = previous.GetChildRecord(item);
+      previous = dirItem.GetChildRecord(item);
     }
 
     return previous;
