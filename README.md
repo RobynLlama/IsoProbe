@@ -22,10 +22,11 @@ IsoProbe is a work-in-progress ISO-9660 filesystem library and frontend applicat
 - **FILEDUMP**: Extracts a specified file from the disk and saves it to a file on the local drive. **Warning:** This will overwrite existing files without prompting.
 - **EXIT**: Immediately terminates the application.
 
-## Known Issues
+## Extensions / Features / Issues
 
-- Joliet extensions are mostly supported.
-  - Detection of SVD triggers Joliet support, which works for ~99% of cases but may cause issues with some non-standard disks.
+- Joliet extensions are supported.
+  - Joliet SVD and Level is validated
+  - Todo: Validate Joliet Root Record and fallback to PVD if validation fails
 - Rock Ridge extensions are not supported yet.
 - Multi-extent files are not supported and will log a warning on attempted access. This will only effect files larger than 4gb
 - Debug logging cannot be disabled.
