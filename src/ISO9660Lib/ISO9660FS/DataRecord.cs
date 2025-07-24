@@ -39,7 +39,7 @@ public class DataRecord
   /// The sector that this record belongs to. Note that
   /// it is initialized lazily and may throw if it is invalid
   /// </summary>
-  public LogicalSector OwningSector
+  public LogicalSector ExtentSector
   {
     get
     {
@@ -83,7 +83,7 @@ public class DataRecord
     if (!FlagIsDirectory)
       return null;
 
-    return OwningSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
+    return ExtentSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
   }
 
   /// <summary>
@@ -99,7 +99,7 @@ public class DataRecord
 
     string padding = new(' ', indent * 2);
 
-    var items = OwningSector.GetDirectoryContents();
+    var items = ExtentSector.GetDirectoryContents();
 
     sb.Append(padding);
     sb.AppendLine(ToString());
@@ -182,7 +182,7 @@ public class DataRecord
     if (FlagIsDirectory)
     {
       padID = Identifier.PadRight(9);
-      return $"{padID} [{OwningSector.GetDirectoryContents().Count} items]";
+      return $"{padID} [{ExtentSector.GetDirectoryContents().Count} items]";
     }
 
 

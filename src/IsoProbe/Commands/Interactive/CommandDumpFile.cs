@@ -42,7 +42,7 @@ public class CommandDumpFile : ICommandRunner
     }
 
     using var writer = new FileStream(fileOut.FullName, FileMode.OpenOrCreate, FileAccess.Write);
-    var data = fileIn.OwningSector.GetFileContents();
+    var data = fileIn.ExtentSector.GetFileContents();
     writer.Write(data);
     var smolWrite = data.Length < 2000;
 
