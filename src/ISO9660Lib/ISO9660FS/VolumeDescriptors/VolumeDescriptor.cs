@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -13,12 +14,19 @@ public class VolumeDescriptor
   /// </summary>
   public VolumeDescriptorType DescriptorType;
 
+  private static readonly Dictionary<string, int> _jolietEscapes = new()
+  {
+    {"%/@", 1},
+    {"%/C", 2},
+    {"%/E", 3}
+  };
+
   internal VolumeDescriptor(VolumeDescriptorType type)
   {
     DescriptorType = type;
   }
 
-  internal static VolumeDescriptor FromSector(BinaryReader sector, ECMAFS owner)
+  internal static VolumeDescriptor? FromSector(BinaryReader sector, ECMAFS owner)
   {
     //return the reader to the beginning
     sector.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -37,6 +45,9 @@ public class VolumeDescriptor
 
     owner._logger?.LogMessage($"\n Descriptor type: {recordType}\n Descriptor Version: {version}");
 
+    if (recordType == 255)
+      return new VolumeDescriptorSetTerminator();
+
     if (recordType != 1 && recordType != 2)
       return new VolumeDescriptor((VolumeDescriptorType)recordType);
 
@@ -54,8 +65,22 @@ public class VolumeDescriptor
     //skip the second half of the both-endian block
     sector.ReadInt32();
 
-    //skip the escape sequences block
-    sector.ReadBytes(32);
+    //Joliet escape sequences
+    string escapes = Encoding.ASCII.GetString(sector.ReadBytes(32)).Trim('\0');
+
+    if (recordType == 2)
+    {
+      if (_jolietEscapes.TryGetValue(escapes, out var jLevel))
+      {
+        owner._logger?.LogMessage($"Joliet level: {jLevel}");
+      }
+      else
+      {
+        owner._logger?.LogMessage($"Failed to parse Joliet escapes, unknown SVD");
+        return null;
+      }
+    }
+    ;
 
     uint volumeSetSize = sector.ReadUInt16();
     //skip

@@ -112,9 +112,9 @@ public class ECMAFS
       if (!TryGetSectorUserData(currentSector, out var sector))
         throw new InvalidDataException($"Unable to read volume descriptor in sector {currentSector}");
 
-      VolumeDescriptor vd = VolumeDescriptor.FromSector(sector, this);
+      VolumeDescriptor? vd = VolumeDescriptor.FromSector(sector, this);
 
-      if (vd.DescriptorType == VolumeDescriptorType.VolumeDescriptorTerminator)
+      if (vd is VolumeDescriptorSetTerminator)
         break;
       else if (vd is PrimaryVolumeDescriptor pvd)
       {
