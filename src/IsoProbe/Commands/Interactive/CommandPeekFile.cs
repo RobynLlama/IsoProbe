@@ -62,6 +62,7 @@ public class CommandPeekFile : ICommandRunner
 
     byte[] data = reader.ReadBytes(dataToRead);
 
+    Console.WriteLine($"Dumping: {item.FullyQualifiedIdentifier}");
     Console.WriteLine("----------");
 
     if (!rawMode)
