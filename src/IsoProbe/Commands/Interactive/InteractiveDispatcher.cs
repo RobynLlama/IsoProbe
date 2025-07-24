@@ -13,13 +13,14 @@ public class InteractiveDispatcher : CommandDispatcher
 
   public InteractiveDispatcher()
   {
+    TryAddCommand(new CommandHelp(this));
     TryAddCommand(new CommandLoadDisk());
     TryAddCommand(new CommandCloseDisk());
-    TryAddCommand(new CommandChangeDirectory());
     TryAddCommand(new CommandListDirectory());
+    TryAddCommand(new CommandChangeDirectory());
     TryAddCommand(new CommandPeekFile());
-    TryAddCommand(new CommandExit());
     TryAddCommand(new CommandDumpFile());
+    TryAddCommand(new CommandExit());
   }
 
   public override void OnCommandNotFound(string commandName)
