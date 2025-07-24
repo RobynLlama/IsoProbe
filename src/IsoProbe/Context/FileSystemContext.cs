@@ -30,7 +30,7 @@ public class FileSystemContext
     try
     {
       LoadedMedia = new(info, Console.OpenStandardOutput());
-      CurrentDirectoryRecord = LoadedMedia.RootRecord;
+      CurrentDirectoryRecord = LoadedMedia.PVD.RootRecord;
     }
     catch (Exception ex)
     {

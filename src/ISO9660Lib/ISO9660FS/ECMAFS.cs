@@ -49,65 +49,12 @@ public class ECMAFS
   /// <summary>
   /// The primary volume descriptor record for this filesystem
   /// </summary>
-  public readonly PrimaryVolumeDescriptor PVD;
-
-  /// <summary>
-  /// The data record of the Root record. The Root contains a listing of
-  /// every directory and file on the root of the filesystem
-  /// </summary>
-  public readonly DirectoryRecord RootRecord;
-
-  /// <summary>
-  /// The data record of the path table, a special area that lists
-  /// directories for quick lookup. Good for hot path stuff but
-  /// optional within the spec
-  /// </summary>
-  public readonly DirectoryRecord PathTable;
-
-  /// <summary>
-  /// The total number of sectors in this filesystem
-  /// </summary>
-  public readonly uint SectorCount;
+  public readonly MasterVolumeDescriptor PVD;
 
   /// <summary>
   /// The size of the file read to create this filesystem
   /// </summary>
   public readonly long FileSize;
-
-  /// <summary>
-  /// A 128 character string describing the volume set for this disk
-  /// </summary>
-  public string VolumeSetID = string.Empty;
-
-  /// <summary>
-  /// A 128 character string describing the publisher for this media
-  /// </summary>
-  public string PublisherID = string.Empty;
-
-  /// <summary>
-  /// A 128 character string describing who prepared this media
-  /// </summary>
-  public string PreparerID = string.Empty;
-
-  /// <summary>
-  /// A 128 character string describing the application on this media
-  /// </summary>
-  public string ApplicationID = string.Empty;
-
-  /// <summary>
-  /// A 37 character string describing the copyright of this media
-  /// </summary>
-  public string CopyrightFile = string.Empty;
-
-  /// <summary>
-  /// A 37 character string. ???
-  /// </summary>
-  public string AbstractFile = string.Empty;
-
-  /// <summary>
-  /// A 37 character string. ???
-  /// </summary>
-  public string BiblioFile = string.Empty;
 
   internal LogWriter? _logger;
 
@@ -151,95 +98,33 @@ public class ECMAFS
         break;
     }
 
-    if (!TryGetSectorRaw(16, out var _sector))
-      throw new InvalidDataException($"Unable to fetch sector 16, ECMAFS is invalid or damaged!");
+    var currentSector = 16u;
 
-    using var sector = _sector;
-    var reader = sector.Reader;
+    while (true)
+    {
+      if (!TryGetSectorRaw(currentSector, out var sector))
+        throw new InvalidDataException($"Unable to read volume descriptor in sector {currentSector}");
 
-    //skip the header if there is one
-    reader.ReadBytes(HEADER_SIZE);
-    //skip the 0x01 CD001 header
-    reader.ReadBytes(6);
+      VolumeDescriptor vd = VolumeDescriptor.FromSector(sector, this);
 
-    //version
-    int version = reader.ReadByte();
+      if (vd.DescriptorType == VolumeDescriptorType.VolumeDescriptorTerminator)
+        break;
+      else if (vd is PrimaryVolumeDescriptor pvd)
+      {
+        PVD = pvd;
+        _logger?.LogMessage("Assigned PVD from pvd");
+      }
+      else if (vd is SupplementalVolumeDescriptor svd)
+      {
+        PVD = svd;
+        _logger?.LogMessage("Assigned PVD from svd");
+      }
 
-    _logger?.LogMessage($"Descriptor Version: {version}");
+      currentSector++;
+    }
 
-    //skip the reserved byte
-    //SHOULD always be 0x00 but we're ignoring it for now
-    reader.ReadByte();
-
-    string systemID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
-    string volumeID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
-
-    //skip 8 unused bytes
-    reader.ReadBytes(8);
-
-    uint logicalBlocks = reader.ReadUInt32();
-    //skip the second half of the both-endian block
-    reader.ReadInt32();
-
-    //skip the escape sequences block
-    reader.ReadBytes(32);
-
-    uint volumeSetSize = reader.ReadUInt16();
-    //skip
-    reader.ReadInt16();
-
-    uint volumeSequenceNo = reader.ReadUInt16();
-    //skip
-    reader.ReadInt16();
-
-    uint logicalBlockSize = reader.ReadUInt16();
-    //skip
-    reader.ReadInt16();
-
-    uint pathTableSize = reader.ReadUInt32();
-    //skip
-    reader.ReadInt32();
-
-    uint pathTableL = reader.ReadUInt32();
-    uint pathTableLOpt = reader.ReadUInt32();
-
-    //skip pathTableM
-    reader.ReadBytes(8);
-
-    var dirLength = reader.ReadByte() - 1;
-    //Console.WriteLine($"Parsing {dirLength} bytes into root record");
-
-    byte[] rootData = reader.ReadBytes(dirLength);
-
-    VolumeSetID = Encoding.ASCII.GetString(reader.ReadBytes(128));
-    PublisherID = Encoding.ASCII.GetString(reader.ReadBytes(128));
-    PreparerID = Encoding.ASCII.GetString(reader.ReadBytes(128));
-    ApplicationID = Encoding.ASCII.GetString(reader.ReadBytes(128));
-
-    CopyrightFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
-    AbstractFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
-    BiblioFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
-
-    //skip 4 timestamps
-    reader.ReadBytes(17);
-    reader.ReadBytes(17);
-    reader.ReadBytes(17);
-    reader.ReadBytes(17);
-
-    //skip version and structure byte (always 0x01 0x00)
-    reader.ReadBytes(2);
-
-    PVD = new(version, systemID, volumeID, logicalBlocks, logicalBlockSize, volumeSetSize, volumeSequenceNo, this);
-
-    if (DataRecord.FromBytes(rootData, null, this) is not DirectoryRecord rootRec)
-      throw new InvalidDataException("Unable to parse the root record");
-
-    RootRecord = rootRec;
-    PathTable = new(pathTableL, pathTableSize, 0, "PathTable", null, null, this);
-
-    SectorCount = PVD.LogicalBlockCount;
-
-    sector.Dispose();
+    if (PVD is null)
+      throw new InvalidOperationException("Read all volume descriptors and did not assign a PVD");
   }
 
   internal DiskFormat SetupMode()
@@ -327,10 +212,10 @@ public class ECMAFS
     fullPath = fullPath.TrimStart(Path.DirectorySeparatorChar);
 
     if (fullPath == string.Empty)
-      return RootRecord;
+      return PVD.RootRecord;
 
     string[] identifiers = fullPath.Split(Path.DirectorySeparatorChar);
-    DataRecord? previous = RootRecord;
+    DataRecord? previous = PVD.RootRecord;
 
     foreach (var item in identifiers)
     {
