@@ -66,6 +66,7 @@ public class ECMAFS
 
   private readonly BinaryReader _backingData;
   private readonly Dictionary<uint, LogicalSector> _sectorCache = [];
+  private readonly Dictionary<string, DataRecord?> _recordCache = [];
 
   /// <summary>
   /// Creates a new ECMAFS from a FileInfo on disk
@@ -221,6 +222,12 @@ public class ECMAFS
     if (fullPath == string.Empty)
       return PVD.RootRecord;
 
+    if (_recordCache.TryGetValue(fullPath, out var cacheRecord))
+    {
+      _logger?.LogMessage("Cache hit");
+      return cacheRecord;
+    }
+
     string[] identifiers = fullPath.Split(Path.DirectorySeparatorChar);
     DataRecord? previous = PVD.RootRecord;
 
@@ -235,6 +242,7 @@ public class ECMAFS
       previous = dirItem.GetChildRecord(item);
     }
 
+    _recordCache.TryAdd(fullPath, previous);
     return previous;
   }
 
