@@ -53,7 +53,7 @@ public class CommandPeekFile : ICommandRunner
       return false;
     }
 
-    using MemoryStream contents = new(item.ExtentSector.GetFileContents());
+    using MemoryStream contents = new(item.GetFileContents());
     using BinaryReader reader = new(contents);
 
     int dataToRead = contents.Length > 127
