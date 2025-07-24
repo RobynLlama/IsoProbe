@@ -123,8 +123,8 @@ public class LogicalSector
         break;
     }
 
-    //only cache reads items less than 5kb
-    if (contents.Length < 5000)
+    //only cache reads less than 4kb
+    if (contents.Length < 4096)
     {
       _fileContentsFetched = true;
       _fileContents = contents;
