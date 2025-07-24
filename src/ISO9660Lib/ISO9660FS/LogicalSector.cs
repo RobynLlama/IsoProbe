@@ -111,11 +111,11 @@ public class LogicalSector
       if (nextRead > blockSize)
         nextRead = blockSize;
 
-      next.Reader.ReadBytes(Owner.HEADER_SIZE);
+      next.ReadBytes(Owner.HEADER_SIZE);
 
       //This should ideally never be so big that it causes an issue
       //ISO9660 demands sector sizes be 2048 or smaller anyway
-      cms.Write(next.Reader.ReadBytes((int)nextRead));
+      cms.Write(next.ReadBytes((int)nextRead));
       dataToRead -= nextRead;
       next.Dispose();
 
@@ -133,15 +133,15 @@ public class LogicalSector
     return contents;
   }
 
-  internal Queue<PhysicalSector> GetOccupiedSectors(uint fetch = 0)
+  internal Queue<BinaryReader> GetOccupiedSectors(uint fetch = 0)
   {
-    Queue<PhysicalSector> items = [];
+    Queue<BinaryReader> items = [];
     if (fetch == 0)
       fetch = PhysicalSectorsOccupied;
 
     for (uint i = SectorIndex; i < SectorIndex + fetch; i++)
     {
-      if (Owner.TryGetSectorRaw(i, out var raw))
+      if (Owner.TryGetSectorUserData(i, out var raw))
         items.Enqueue(raw);
       else
         throw new InvalidOperationException($"Attempted to read an invalid sector #{i}");

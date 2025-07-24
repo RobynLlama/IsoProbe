@@ -109,7 +109,7 @@ public class ECMAFS
 
     while (true)
     {
-      if (!TryGetSectorRaw(currentSector, out var sector))
+      if (!TryGetSectorUserData(currentSector, out var sector))
         throw new InvalidDataException($"Unable to read volume descriptor in sector {currentSector}");
 
       VolumeDescriptor vd = VolumeDescriptor.FromSector(sector, this);
@@ -140,7 +140,7 @@ public class ECMAFS
     //Start in logical mode
     //Logical mode is smaller so if we can't reach sector 16 the ECMA is damaged
     //or the file isn't a disk at all
-    if (!TryGetSectorRaw(16, out var _sector))
+    if (!TryGetSectorUserData(16, out var _sector))
       return DiskFormat.Unknown;
 
     static bool Valid9660Header(BinaryReader reader)
@@ -163,12 +163,12 @@ public class ECMAFS
 
     using var logicalHeader = _sector;
 
-    if (Valid9660Header(logicalHeader.Reader))
+    if (Valid9660Header(logicalHeader))
       return DiskFormat.ISO9660;
 
-    logicalHeader.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
+    logicalHeader.BaseStream.Seek(0, SeekOrigin.Begin);
 
-    if (ValidUDFHeader(logicalHeader.Reader))
+    if (ValidUDFHeader(logicalHeader))
       return DiskFormat.UDF;
 
     _logger?.LogMessage("Attempting to read disk in raw mode");
@@ -176,22 +176,20 @@ public class ECMAFS
     HEADER_SIZE = 24;
     SECTOR_SIZE = 2352;
 
-    if (!TryGetSectorRaw(16, out var _sector2))
+    if (!TryGetSectorUserData(16, out var _sector2))
       return DiskFormat.Unknown;
 
     using var rawHeader = _sector2;
-    rawHeader.Reader.ReadBytes(HEADER_SIZE);
 
-    if (Valid9660Header(rawHeader.Reader))
+    if (Valid9660Header(rawHeader))
     {
       RawSectors = true;
       return DiskFormat.ISO9660;
     }
 
-    rawHeader.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
-    rawHeader.Reader.ReadBytes(HEADER_SIZE);
+    rawHeader.BaseStream.Seek(0, SeekOrigin.Begin);
 
-    if (ValidUDFHeader(rawHeader.Reader))
+    if (ValidUDFHeader(rawHeader))
     {
       RawSectors = true;
       return DiskFormat.UDF;
@@ -287,9 +285,10 @@ public class ECMAFS
   /// <remarks>
   /// The out RawSector will be null in the event a <em>FALSE</em> value is returned.
   /// </remarks>
-  public bool TryGetSectorRaw(uint sector, [NotNullWhen(true)] out PhysicalSector? output)
+  public bool TryGetSectorUserData(uint sector, [NotNullWhen(true)] out BinaryReader? output)
   {
     output = null;
+
     var location = sector * SECTOR_SIZE;
     _logger?.LogMessage($"Retrieving sector #{sector:N0}");
 
@@ -299,11 +298,10 @@ public class ECMAFS
       return false;
     }
 
-
     _backingData.BaseStream.Seek(location, SeekOrigin.Begin);
+    _backingData.ReadBytes(HEADER_SIZE);
 
-    MemoryStream ms = new(_backingData.ReadBytes(SECTOR_SIZE));
-    output = new(this, sector, new(ms));
+    output = new(new MemoryStream(_backingData.ReadBytes(SECTOR_SIZE)));
     return true;
   }
 }
