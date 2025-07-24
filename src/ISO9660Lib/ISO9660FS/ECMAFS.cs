@@ -14,23 +14,36 @@ namespace ISO9660Lib.ISO9660FS;
 public class ECMAFS
 {
   /// <summary>
-  /// The size of the header information in each sector
+  /// What format the media's filesystem is in
   /// </summary>
-  public const int HEADER_SIZE = 24;
+  public DiskFormat MediaFormat { get; private set; } = DiskFormat.Unknown;
 
   /// <summary>
-  /// The physical size of each sector, this is
-  /// defined within the standard and never changes
+  /// If the disk uses raw sectors or logical sectors
   /// </summary>
-  public const int SECTOR_SIZE = 2352;
+  public bool RawSectors { get; private set; } = false;
+
+  /// <summary>
+  /// The size of the header information in each sector, this only
+  /// applies if the disk is a raw dump with header information.
+  /// Its 24 bytes if the disk has a raw header on each sector
+  /// </summary>
+  public int HEADER_SIZE { get; private set; } = 0;
+
+  /// <summary>
+  /// The physical size of each sector, this is can change
+  /// depending on if the dump is raw mode or logical mode.
+  /// This is 2352 if the disk has a raw header and ECC
+  /// </summary>
+  public int SECTOR_SIZE { get; private set; } = 2048;
 
   /// <summary>
   /// A constant value used to identify a MODE 1
   /// disk header
   /// </summary>
-  public readonly static byte[] MODE_1_SYNC_PATTERN =
+  public readonly static byte[] CD001_HEADER =
   [
-    0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
+    0x01, 0x43, 0x44, 0x30, 0x30, 0x31
   ];
 
   /// <summary>
@@ -117,58 +130,42 @@ public class ECMAFS
     _backingData = new(stream);
     FileSize = stream.Length;
 
+
     if (logSink is not null)
       _logger = new(logSink);
+
+    MediaFormat = SetupMode();
+
+    switch (MediaFormat)
+    {
+      default:
+      case DiskFormat.Unknown:
+        throw new InvalidDataException("Unable to determine the filesystem of the disk.");
+
+      case DiskFormat.UDF:
+        _logger?.LogMessage("Detected UDF filesystem on the disk.");
+        throw new InvalidDataException("UDF format disks are currently not supported.");
+
+      case DiskFormat.ISO9660:
+        _logger?.LogMessage("Detected standard ISO 9660 (classic CD-ROM) filesystem.");
+        break;
+    }
 
     if (!TryGetSectorRaw(16, out var _sector))
       throw new InvalidDataException($"Unable to fetch sector 16, ECMAFS is invalid or damaged!");
 
     using var sector = _sector;
+    var reader = sector.Reader;
 
-    BinaryReader reader = sector.Reader;
+    //skip the header if there is one
+    reader.ReadBytes(HEADER_SIZE);
+    //skip the 0x01 CD001 header
+    reader.ReadBytes(6);
 
-    //read the MODE 1 header
-    var header = reader.ReadBytes(12);
-    //skip MSF
-    reader.ReadBytes(3);
-    var mode = reader.ReadByte();
-    //skip reserved bytes
-    reader.ReadBytes(8);
-
-    if (!header.SequenceEqual(MODE_1_SYNC_PATTERN))
-    {
-      var reason = "Unable to match SYNC pattern for Mode 1 or 2 disks, IsoProbe only supports ISO9660 filesystems";
-      _logger?.LogError(reason);
-      throw new InvalidOperationException(reason);
-    }
-
-    if (mode > 0x02)
-    {
-      var reason = $"IsoProbe only supports mode 1 or 2 disks, found mode: {(int)mode}";
-      _logger?.LogError(reason);
-      throw new InvalidOperationException(reason);
-    }
-
-    _logger?.LogMessage($"Sync pattern established, PVD is mode {(int)mode}");
-
-    int vType = reader.ReadByte();
-    string ident = Encoding.ASCII.GetString(reader.ReadBytes(5));
+    //version
     int version = reader.ReadByte();
 
-    if (vType != 1)
-    {
-      var reason = $"Expected a PVD record (0x01) at sector 16, type: {vType}, unable to continue!";
-      _logger?.LogError(reason);
-      throw new InvalidDataException(reason);
-    }
-
-
-    if (!ident.Equals("cd001", StringComparison.InvariantCultureIgnoreCase))
-    {
-      var reason = $"PVD is invalid, Expected \"CD001\" Identifier: {ident}";
-      _logger?.LogError(reason);
-      throw new InvalidDataException(reason);
-    }
+    _logger?.LogMessage($"Descriptor Version: {version}");
 
     //skip the reserved byte
     //SHOULD always be 0x00 but we're ignoring it for now
@@ -238,6 +235,73 @@ public class ECMAFS
     PathTable = new(pathTableL, pathTableSize, 0, "PathTable", null, this);
 
     SectorCount = PVD.LogicalBlockCount;
+
+    sector.Dispose();
+  }
+
+  internal DiskFormat SetupMode()
+  {
+    //Start in logical mode
+    //Logical mode is smaller so if we can't reach sector 16 the ECMA is damaged
+    //or the file isn't a disk at all
+    if (!TryGetSectorRaw(16, out var _sector))
+      return DiskFormat.Unknown;
+
+    static bool Valid9660Header(BinaryReader reader)
+    {
+      return reader.ReadBytes(6).SequenceEqual(CD001_HEADER);
+    }
+
+    static bool ValidUDFHeader(BinaryReader reader)
+    {
+      //skip checksum, etc
+      reader.ReadBytes(4);
+      string identifier = Encoding.ASCII.GetString(reader.ReadBytes(24)).TrimEnd();
+
+      return identifier switch
+      {
+        "BEA01" or "NSR02" or "NSR03" or "TEA01" => true,
+        _ => false,
+      };
+    }
+
+    using var logicalHeader = _sector;
+
+    if (Valid9660Header(logicalHeader.Reader))
+      return DiskFormat.ISO9660;
+
+    logicalHeader.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
+
+    if (ValidUDFHeader(logicalHeader.Reader))
+      return DiskFormat.UDF;
+
+    _logger?.LogMessage("Attempting to read disk in raw mode");
+
+    HEADER_SIZE = 24;
+    SECTOR_SIZE = 2352;
+
+    if (!TryGetSectorRaw(16, out var _sector2))
+      return DiskFormat.Unknown;
+
+    using var rawHeader = _sector2;
+    rawHeader.Reader.ReadBytes(HEADER_SIZE);
+
+    if (Valid9660Header(rawHeader.Reader))
+    {
+      RawSectors = true;
+      return DiskFormat.ISO9660;
+    }
+
+    rawHeader.Reader.BaseStream.Seek(0, SeekOrigin.Begin);
+    rawHeader.Reader.ReadBytes(HEADER_SIZE);
+
+    if (ValidUDFHeader(rawHeader.Reader))
+    {
+      RawSectors = true;
+      return DiskFormat.UDF;
+    }
+
+    return DiskFormat.Unknown;
   }
 
   /// <summary>

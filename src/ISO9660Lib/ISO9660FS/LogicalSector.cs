@@ -111,7 +111,8 @@ public class LogicalSector
       if (nextRead > blockSize)
         nextRead = blockSize;
 
-      next.Reader.ReadBytes(ECMAFS.HEADER_SIZE);
+      next.Reader.ReadBytes(Owner.HEADER_SIZE);
+
       //This should ideally never be so big that it causes an issue
       //ISO9660 demands sector sizes be 2048 or smaller anyway
       cms.Write(next.Reader.ReadBytes((int)nextRead));
