@@ -29,6 +29,12 @@ public class DataRecord
   public readonly bool FlagIsDirectory;
 
   /// <summary>
+  /// Whether or not this record uses multiple extents
+  /// for its contents. Used for large file support
+  /// </summary>
+  public readonly bool FlagIsMultiExtent;
+
+  /// <summary>
   /// The identifier for this record, eg: the file or
   /// directory name without the version field
   /// </summary>
@@ -92,6 +98,7 @@ public class DataRecord
     LocationOfExtent = locationOfExtent;
     DataLength = dataLength;
     FlagIsDirectory = (flags & 0x02) != 0;
+    FlagIsMultiExtent = (flags & 0x20) != 0;
     Identifier = identifier;
     ContainingSector = containedBy;
     ExtendedAttributes = ear;
@@ -115,6 +122,24 @@ public class DataRecord
       var parentFQI = ContainingSector.Parent.FullyQualifiedIdentifier;
       FullyQualifiedIdentifier = Path.Combine(parentFQI, Identifier);
     }
+  }
+
+  /// <summary>
+  /// Reads the contents from this record's extent.
+  /// This is generally the file data, but for directories
+  /// it will be the raw listing of all items contained within
+  /// </summary>
+  /// <returns></returns>
+  /// <exception cref="InvalidDataException"></exception>
+  public byte[] GetFileContents()
+  {
+    if (FlagIsMultiExtent)
+    {
+      Owner._logger?.LogMessage("Multi-extent files are not supported yet");
+      return [];
+    }
+
+    return ExtentSector.GetFileContents();
   }
 
   internal static DataRecord FromBytes(byte[] data, LogicalSector? containingSector, ECMAFS owningFS)

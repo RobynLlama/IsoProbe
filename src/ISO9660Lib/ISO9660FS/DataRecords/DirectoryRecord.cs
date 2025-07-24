@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -24,6 +25,22 @@ public class DirectoryRecord : DataRecord
   public DataRecord? GetChildRecord(string identifier)
   {
     return ExtentSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
+  }
+
+  /// <summary>
+  /// Reads the contents of the logical sector owned by this
+  /// Directory Record and parses it as DataRecords
+  /// </summary>
+  /// <returns></returns>
+  public List<DataRecord> GetDirectoryContent()
+  {
+    if (FlagIsMultiExtent)
+    {
+      Owner._logger?.LogMessage("Multi-extent files are not supported yet");
+      return [];
+    }
+
+    return ExtentSector.GetDirectoryContents();
   }
 
   /// <summary>

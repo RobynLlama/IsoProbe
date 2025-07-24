@@ -51,12 +51,7 @@ public class LogicalSector
     Parent = parent;
   }
 
-  /// <summary>
-  /// Reads the contents of the logical sector and attempts to
-  /// parse it as a series of DataRecords
-  /// </summary>
-  /// <returns></returns>
-  public List<DataRecord> GetDirectoryContents()
+  internal List<DataRecord> GetDirectoryContents()
   {
     if (_directoryContentsFetched)
     {
@@ -86,14 +81,7 @@ public class LogicalSector
     return _directoryContentsCache;
   }
 
-  /// <summary>
-  /// Reads the contents from this record's extent.
-  /// This is generally the file data, but for directories
-  /// it will be the raw listing of all items contained within
-  /// </summary>
-  /// <returns></returns>
-  /// <exception cref="InvalidDataException"></exception>
-  public byte[] GetFileContents()
+  internal byte[] GetFileContents()
   {
     if (_fileContentsFetched)
       return _fileContents;
