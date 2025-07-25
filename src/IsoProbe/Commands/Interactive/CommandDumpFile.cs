@@ -42,14 +42,22 @@ public class CommandDumpFile : ICommandRunner
     }
 
     using var writer = new FileStream(fileOut.FullName, FileMode.OpenOrCreate, FileAccess.Write);
-    var data = fileIn.GetFileContents();
-    writer.Write(data);
-    var smolWrite = data.Length < 2000;
+
+    var data = new byte[fileIn.Owner.SECTOR_SIZE];
+    var output = 0;
+
+    foreach (var bytes in fileIn.GetFileContentsSectors(data))
+    {
+      output += bytes;
+      writer.Write(data, 0, bytes);
+    }
+
+    var smolWrite = output < 2048;
 
     if (!smolWrite)
-      Console.Write($"Wrote {data.Length / 1000f:N1} kb ");
+      Console.Write($"Wrote {output / 1000f:N1} kb ");
     else
-      Console.Write($"Wrote {data.Length:N0} bytes ");
+      Console.Write($"Wrote {output:N0} bytes ");
 
     Console.WriteLine($"to file: {fileOut.FullName}");
 

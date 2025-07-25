@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using SimpleCommandLib;
 
@@ -53,11 +54,10 @@ public class CommandPeekFile : ICommandRunner
       return false;
     }
 
-    uint dataToRead = item.DataLength > 127u
-    ? 128u
-    : item.DataLength;
-
-    byte[] data = item.GetFileContents(dataToRead);
+    byte[] buffer = new byte[item.Owner.SECTOR_SIZE];
+    int bytesRead = item.GetFileContentsSectors(buffer).First();
+    int dataToRead = Math.Min(bytesRead, 128);
+    byte[] peekBuffer = buffer[..dataToRead];
 
     Console.WriteLine($"Dumping: {item.FullyQualifiedIdentifier}");
     Console.WriteLine("----------");
@@ -68,7 +68,7 @@ public class CommandPeekFile : ICommandRunner
       var bytesLine = 16;
       Console.Write($"0x0000: ");
 
-      foreach (var thing in data)
+      foreach (var thing in peekBuffer)
       {
         Console.Write($"0x{thing:X2} ");
         bytesWritten++;
@@ -78,7 +78,7 @@ public class CommandPeekFile : ICommandRunner
           Console.Write(" | ");
           for (int i = bytesWritten - bytesLine; i < bytesWritten; i++)
           {
-            byte current = data[i];
+            byte current = peekBuffer[i];
             if (current >= 32 && current <= 126)
               Console.Write((char)current);
             else
@@ -88,13 +88,13 @@ public class CommandPeekFile : ICommandRunner
 
           Console.WriteLine();
 
-          if (bytesWritten != data.Length)
+          if (bytesWritten != peekBuffer.Length)
             Console.Write($"0x{bytesWritten:X4}: ");
         }
       }
     }
     else
-      Console.WriteLine(Encoding.ASCII.GetString(data));
+      Console.WriteLine(Encoding.ASCII.GetString(peekBuffer));
 
     Console.WriteLine("----------");
 
