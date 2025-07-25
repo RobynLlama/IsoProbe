@@ -65,7 +65,6 @@ public class ECMAFS
   internal LogWriter? _logger;
 
   private readonly BinaryReader _backingData;
-  private readonly Dictionary<uint, LogicalSector> _sectorCache = [];
   private readonly Dictionary<string, DataRecord?> _recordCache = [];
 
   /// <summary>
@@ -109,10 +108,11 @@ public class ECMAFS
 
     while (true)
     {
-      if (!TryGetSectorUserData(currentSector, out var sector))
+      var sectorData = GetSectorUserData(currentSector);
+      if (sectorData.Length == 0)
         throw new InvalidDataException($"Unable to read volume descriptor in sector {currentSector}");
 
-      VolumeDescriptor? vd = VolumeDescriptor.FromSector(sector, this);
+      VolumeDescriptor? vd = VolumeDescriptor.FromBytes(sectorData, this);
 
       if (vd is VolumeDescriptorSetTerminator)
         break;
@@ -140,7 +140,10 @@ public class ECMAFS
     //Start in logical mode
     //Logical mode is smaller so if we can't reach sector 16 the ECMA is damaged
     //or the file isn't a disk at all
-    if (!TryGetSectorUserData(16, out var _sector))
+
+    var sectorData = GetSectorUserData(16u);
+
+    if (sectorData.Length == 0)
       return DiskFormat.Unknown;
 
     static bool Valid9660Header(BinaryReader reader)
@@ -161,14 +164,15 @@ public class ECMAFS
       };
     }
 
-    using var logicalHeader = _sector;
+    MemoryStream ms = new(sectorData);
+    BinaryReader reader = new(ms);
 
-    if (Valid9660Header(logicalHeader))
+    if (Valid9660Header(reader))
       return DiskFormat.ISO9660;
 
-    logicalHeader.BaseStream.Seek(0, SeekOrigin.Begin);
+    reader.BaseStream.Seek(0, SeekOrigin.Begin);
 
-    if (ValidUDFHeader(logicalHeader))
+    if (ValidUDFHeader(reader))
       return DiskFormat.UDF;
 
     _logger?.LogMessage("Attempting to read disk in raw mode");
@@ -176,20 +180,25 @@ public class ECMAFS
     HEADER_SIZE = 24;
     SECTOR_SIZE = 2352;
 
-    if (!TryGetSectorUserData(16, out var _sector2))
+    ms.Close();
+    reader.Close();
+
+    sectorData = GetSectorUserData(16u);
+
+    if (sectorData.Length == 0)
       return DiskFormat.Unknown;
 
-    using var rawHeader = _sector2;
+    ms = new(sectorData);
 
-    if (Valid9660Header(rawHeader))
+    if (Valid9660Header(reader))
     {
       RawSectors = true;
       return DiskFormat.ISO9660;
     }
 
-    rawHeader.BaseStream.Seek(0, SeekOrigin.Begin);
+    reader.BaseStream.Seek(0, SeekOrigin.Begin);
 
-    if (ValidUDFHeader(rawHeader))
+    if (ValidUDFHeader(reader))
     {
       RawSectors = true;
       return DiskFormat.UDF;
@@ -245,63 +254,24 @@ public class ECMAFS
   }
 
   /// <summary>
-  /// Creates or returns a cached logical sector by index and size
+  /// Returns a byte[] of size <seealso cref="SECTOR_SIZE"/>
   /// </summary>
-  /// <param name="sector">The index of the sector to retrieve</param>
-  /// <param name="size">The size of the sector's extent</param>
-  /// <param name="parent">The data record that owns this logical sector</param>
+  /// <param name="sector">The logical sector number</param>
   /// <returns></returns>
-  /// <exception cref="InvalidDataException"></exception>
-  public LogicalSector GetSectorLogical(uint sector, uint size, DataRecord? parent = null)
+  public byte[] GetSectorUserData(uint sector)
   {
-    uint sectorsOccupied = (size + PVD.LogicalBlockSize - 1) / PVD.LogicalBlockSize;
-
-    if (_sectorCache.TryGetValue(sector, out var data))
-    {
-      _logger?.LogMessage($"Retrieving logical sector #{sector} from cache");
-
-      if (data.Parent != parent)
-        _logger?.LogError($"Sector #{sector} has multiple parents. ISO9660Lib does not yet support this behavior. This may cause further errors when traversing the filesystem upwards!\nClaimants:\n  {data.Parent}\n  {parent}");
-
-      return data;
-    }
-
-    _logger?.LogMessage($"Retrieving new logical sector #{sector}");
-    LogicalSector sec = new(sector, sectorsOccupied, this, parent);
-    _sectorCache.Add(sector, sec);
-
-    return sec;
-  }
-
-  /// <summary>
-  /// Tries to fetch the given raw sector from this ECMAFS
-  /// </summary>
-  /// <param name="sector">Which sector to fetch</param>
-  /// <param name="output">A RawSector containing a complete physical sector</param>
-  /// <returns>
-  /// <em>TRUE</em> if the sector was successfully located and read into a binary reader<br />
-  /// <em>FALSE</em> for any failure
-  /// </returns>
-  /// <remarks>
-  /// The out RawSector will be null in the event a <em>FALSE</em> value is returned.
-  /// </remarks>
-  public bool TryGetSectorUserData(uint sector, [NotNullWhen(true)] out BinaryReader? output)
-  {
-    output = null;
-
     var location = sector * SECTOR_SIZE;
     _logger?.LogMessage($"Retrieving sector #{sector:N0}");
 
     if (location + SECTOR_SIZE > FileSize)
     {
       _logger?.LogError($"Sector is out of bounds: {location:N0} / {FileSize:N0}");
-      return false;
+      return [];
     }
 
     _backingData.BaseStream.Seek(location, SeekOrigin.Begin);
     _backingData.ReadBytes(HEADER_SIZE);
 
-    output = new(new MemoryStream(_backingData.ReadBytes(SECTOR_SIZE)));
-    return true;
+    return _backingData.ReadBytes(SECTOR_SIZE);
   }
 }
