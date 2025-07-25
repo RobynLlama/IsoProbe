@@ -26,22 +26,19 @@ public class VolumeDescriptor
     DescriptorType = type;
   }
 
-  internal static VolumeDescriptor? FromSector(BinaryReader sector, ECMAFS owner)
+  internal static VolumeDescriptor? FromBytes(byte[] sector, ECMAFS owner)
   {
-    //return the reader to the beginning
-    sector.BaseStream.Seek(0, SeekOrigin.Begin);
-
-    //skip the header if there is one
-    sector.ReadBytes(owner.HEADER_SIZE);
+    using MemoryStream ms = new(sector);
+    using BinaryReader reader = new(ms);
 
     //read the record type
-    int recordType = sector.ReadByte();
+    int recordType = reader.ReadByte();
 
     //skip the CD001 header
-    sector.ReadBytes(5);
+    reader.ReadBytes(5);
 
     //version
-    int version = sector.ReadByte();
+    int version = reader.ReadByte();
 
     owner._logger?.LogMessage($"\n Descriptor type: {recordType}\n Descriptor Version: {version}");
 
@@ -53,20 +50,20 @@ public class VolumeDescriptor
 
     //skip the reserved byte
     //SHOULD always be 0x00 but we're ignoring it for now
-    sector.ReadByte();
+    reader.ReadByte();
 
-    string systemID = Encoding.ASCII.GetString(sector.ReadBytes(32)).Trim();
-    string volumeID = Encoding.ASCII.GetString(sector.ReadBytes(32)).Trim();
+    string systemID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
+    string volumeID = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim();
 
     //skip 8 unused bytes
-    sector.ReadBytes(8);
+    reader.ReadBytes(8);
 
-    uint logicalBlocks = sector.ReadUInt32();
+    uint logicalBlocks = reader.ReadUInt32();
     //skip the second half of the both-endian block
-    sector.ReadInt32();
+    reader.ReadInt32();
 
     //Joliet escape sequences
-    string escapes = Encoding.ASCII.GetString(sector.ReadBytes(32)).Trim('\0');
+    string escapes = Encoding.ASCII.GetString(reader.ReadBytes(32)).Trim('\0');
 
     if (recordType == 2)
     {
@@ -82,32 +79,32 @@ public class VolumeDescriptor
     }
     ;
 
-    uint volumeSetSize = sector.ReadUInt16();
+    uint volumeSetSize = reader.ReadUInt16();
     //skip
-    sector.ReadInt16();
+    reader.ReadInt16();
 
-    uint volumeSequenceNo = sector.ReadUInt16();
+    uint volumeSequenceNo = reader.ReadUInt16();
     //skip
-    sector.ReadInt16();
+    reader.ReadInt16();
 
-    uint logicalBlockSize = sector.ReadUInt16();
+    uint logicalBlockSize = reader.ReadUInt16();
     //skip
-    sector.ReadInt16();
+    reader.ReadInt16();
 
-    uint pathTableSize = sector.ReadUInt32();
+    uint pathTableSize = reader.ReadUInt32();
     //skip
-    sector.ReadInt32();
+    reader.ReadInt32();
 
-    uint pathTableL = sector.ReadUInt32();
-    uint pathTableLOpt = sector.ReadUInt32();
+    uint pathTableL = reader.ReadUInt32();
+    uint pathTableLOpt = reader.ReadUInt32();
 
     //skip pathTableM
-    sector.ReadBytes(8);
+    reader.ReadBytes(8);
 
-    var dirLength = sector.ReadByte() - 1;
+    var dirLength = reader.ReadByte() - 1;
     //Console.WriteLine($"Parsing {dirLength} bytes into root record");
 
-    byte[] rootData = sector.ReadBytes(dirLength);
+    byte[] rootData = reader.ReadBytes(dirLength);
 
     using MemoryStream rms = new(rootData);
     using BinaryReader rootReader = new(rms);
@@ -118,23 +115,23 @@ public class VolumeDescriptor
     uint rootDataLength = rootReader.ReadUInt32();
     rootReader.ReadUInt32();
 
-    var volumeSetID = Encoding.ASCII.GetString(sector.ReadBytes(128));
-    var publisherID = Encoding.ASCII.GetString(sector.ReadBytes(128));
-    var preparerID = Encoding.ASCII.GetString(sector.ReadBytes(128));
-    var applicationID = Encoding.ASCII.GetString(sector.ReadBytes(128));
+    var volumeSetID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    var publisherID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    var preparerID = Encoding.ASCII.GetString(reader.ReadBytes(128));
+    var applicationID = Encoding.ASCII.GetString(reader.ReadBytes(128));
 
-    var copyrightFile = Encoding.ASCII.GetString(sector.ReadBytes(37));
-    var abstractFile = Encoding.ASCII.GetString(sector.ReadBytes(37));
-    var biblioFile = Encoding.ASCII.GetString(sector.ReadBytes(37));
+    var copyrightFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
+    var abstractFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
+    var biblioFile = Encoding.ASCII.GetString(reader.ReadBytes(37));
 
     //skip 4 timestamps
-    sector.ReadBytes(17);
-    sector.ReadBytes(17);
-    sector.ReadBytes(17);
-    sector.ReadBytes(17);
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
+    reader.ReadBytes(17);
 
     //skip version and structure byte (always 0x01 0x00)
-    sector.ReadBytes(2);
+    reader.ReadBytes(2);
 
     var rootRecord = new DirectoryRecord(rootExtentLocation, rootDataLength, 0x02, ".", null, null, owner);
     var pathTable = new DirectoryRecord(pathTableL, pathTableSize, 0, "PathTable", null, null, owner);
