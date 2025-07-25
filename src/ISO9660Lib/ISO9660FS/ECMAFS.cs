@@ -62,7 +62,10 @@ public class ECMAFS
   /// </summary>
   public readonly long FileSize;
 
-  internal LogWriter? _logger;
+  /// <summary>
+  /// The logger instance for this ECMAFS
+  /// </summary>
+  public readonly LogWriter? _logger;
 
   private readonly BinaryReader _backingData;
   private readonly Dictionary<string, DataRecord?> _recordCache = [];

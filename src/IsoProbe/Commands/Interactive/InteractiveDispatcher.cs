@@ -18,6 +18,7 @@ public class InteractiveDispatcher : CommandDispatcher
     TryAddCommand(new CommandCloseDisk());
     TryAddCommand(new CommandListDirectory());
     TryAddCommand(new CommandChangeDirectory());
+    TryAddCommand(new CommandToggleLogging());
     TryAddCommand(new CommandPeekFile());
     TryAddCommand(new CommandDumpFile());
     TryAddCommand(new CommandExit());

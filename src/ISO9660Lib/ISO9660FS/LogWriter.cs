@@ -24,13 +24,21 @@ public class LogWriter(Stream logSink)
   /// Writes a log message to the error stream
   /// </summary>
   /// <param name="message"></param>
-  public void LogError(object message) => WriteToLog("ERR", message);
+  public void LogError(object message)
+  {
+    if (AllowError)
+      WriteToLog("ERR", message);
+  }
 
   /// <summary>
   /// Writes a log message to the message stream
   /// </summary>
   /// <param name="message"></param>
-  public void LogMessage(object message) => WriteToLog("MSG", message);
+  public void LogMessage(object message)
+  {
+    if (AllowMessage)
+      WriteToLog("MSG", message);
+  }
 
   private void WriteToLog(string code, object message)
   {
