@@ -12,6 +12,8 @@ public class CommandPeekFile : ICommandRunner
 
   public string CommandUsage => "peeks at 128 bytes of data from the start of the given file\n  Usage: peek <fileName> OR peek --raw <filename>";
 
+  private static readonly string _separator = new('-', 107);
+
   public bool Execute(string[] args)
   {
     bool rawMode = false;
@@ -60,43 +62,71 @@ public class CommandPeekFile : ICommandRunner
     byte[] peekBuffer = buffer[..dataToRead];
 
     Console.WriteLine($"Dumping: {item.FullyQualifiedIdentifier}");
-    Console.WriteLine("----------");
+    Console.WriteLine(_separator);
+
+    ConsoleColor orig = Console.ForegroundColor;
+
+    ConsoleColor ASCIIHex = ConsoleColor.White;
+    ConsoleColor ASCIIChar = ConsoleColor.Green;
+    ConsoleColor Unprintable = ConsoleColor.DarkGray;
+    ConsoleColor Offset = ConsoleColor.Yellow;
 
     if (!rawMode)
     {
-      var bytesWritten = 0;
-      var bytesLine = 16;
-      Console.Write($"0x0000: ");
+      const int bytesPerLine = 16;
+      int offset = 0;
 
-      foreach (var thing in peekBuffer)
+      while (offset < dataToRead)
       {
-        Console.Write($"0x{thing:X2} ");
-        bytesWritten++;
+        int lineLength = Math.Min(bytesPerLine, dataToRead - offset);
+        var lineSlice = peekBuffer.AsSpan(offset, lineLength);
 
-        if (bytesWritten % bytesLine == 0)
+        //hex print offset
+        Console.ForegroundColor = Offset;
+        Console.Write($"0x{offset:X4}: ");
+
+        bool isPrintable(byte b) =>
+          b >= 32 && b <= 126;
+
+        //hex print bytes
+        foreach (var b in lineSlice)
         {
-          Console.Write(" | ");
-          for (int i = bytesWritten - bytesLine; i < bytesWritten; i++)
-          {
-            byte current = peekBuffer[i];
-            if (current >= 32 && current <= 126)
-              Console.Write((char)current);
-            else
-              Console.Write('.');
-
-          }
-
-          Console.WriteLine();
-
-          if (bytesWritten != peekBuffer.Length)
-            Console.Write($"0x{bytesWritten:X4}: ");
+          Console.ForegroundColor = isPrintable(b) ? ASCIIHex : Unprintable;
+          Console.Write($"0x{b:X2} ");
         }
+
+
+        //pad the hex area if line shorter than 16 bytes
+        if (lineLength < bytesPerLine)
+        {
+          int missing = bytesPerLine - lineLength;
+          Console.ForegroundColor = ConsoleColor.DarkGray;
+          Console.Write(new string(' ', missing * 5)); // 5 chars per byte "0xXX "
+        }
+
+        Console.ForegroundColor = orig;
+        //print the string values
+        Console.Write(" | ");
+        foreach (var b in lineSlice)
+        {
+          //replace invalid characters with '.'
+          var printable = isPrintable(b);
+          char c = printable ? (char)b : '.';
+          Console.ForegroundColor = printable ? ASCIIChar : Unprintable;
+          Console.Write(c);
+        }
+
+        //push the line forward on the console and read a new line
+        Console.ForegroundColor = orig;
+        Console.WriteLine();
+        offset += lineLength;
       }
     }
     else
       Console.WriteLine(Encoding.ASCII.GetString(peekBuffer));
 
-    Console.WriteLine("----------");
+    Console.ForegroundColor = orig;
+    Console.WriteLine(_separator);
 
     return true;
   }
