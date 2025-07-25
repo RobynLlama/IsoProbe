@@ -6,7 +6,7 @@ namespace ISO9660Lib.ISO9660FS;
 /// </summary>
 public class ExtendedAttributeRecord : DataRecord
 {
-  internal ExtendedAttributeRecord(uint locationOfExtent, uint dataLength, string identifier, LogicalSector? containedBy, ECMAFS owner) : base(locationOfExtent, dataLength, 0x00, identifier, containedBy, null, owner)
+  internal ExtendedAttributeRecord(uint locationOfExtent, uint dataLength, string identifier, DirectoryRecord? containedBy, ECMAFS owner) : base(locationOfExtent, dataLength, 0x00, identifier, containedBy, null, owner)
   {
   }
 }

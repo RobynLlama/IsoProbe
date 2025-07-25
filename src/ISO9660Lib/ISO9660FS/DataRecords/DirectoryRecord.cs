@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -10,7 +11,7 @@ namespace ISO9660Lib.ISO9660FS;
 /// </summary>
 public class DirectoryRecord : DataRecord
 {
-  internal DirectoryRecord(uint locationOfExtent, uint dataLength, int flags, string identifier, LogicalSector? containedBy, ExtendedAttributeRecord? ear, ECMAFS owner) : base(locationOfExtent, dataLength, flags, identifier, containedBy, ear, owner)
+  internal DirectoryRecord(uint locationOfExtent, uint dataLength, int flags, string identifier, DirectoryRecord? containedBy, ExtendedAttributeRecord? ear, ECMAFS owner) : base(locationOfExtent, dataLength, flags, identifier, containedBy, ear, owner)
   {
   }
 
@@ -24,23 +25,42 @@ public class DirectoryRecord : DataRecord
   /// </returns>
   public DataRecord? GetChildRecord(string identifier)
   {
-    return ExtentSector.GetDirectoryContents().Where(item => item.Identifier == identifier).FirstOrDefault();
+    return GetDirectoryContent().Where(item => item.Identifier == identifier).FirstOrDefault();
   }
 
   /// <summary>
-  /// Reads the contents of the logical sector owned by this
+  /// Reads the contents of the extent owned by this
   /// Directory Record and parses it as DataRecords
   /// </summary>
   /// <returns></returns>
-  public List<DataRecord> GetDirectoryContent()
+  public IEnumerable<DataRecord> GetDirectoryContent()
   {
     if (FlagIsMultiExtent)
     {
       Owner._logger?.LogMessage("Multi-extent files are not supported yet");
-      return [];
+      yield break;
     }
 
-    return ExtentSector.GetDirectoryContents();
+    byte[] buffer = new byte[Owner.SECTOR_SIZE];
+    using MemoryStream ms = new(buffer);
+    using BinaryReader reader = new(ms);
+
+    foreach (var data in GetFileContentsSectors(buffer))
+    {
+      ms.Seek(0, SeekOrigin.Begin);
+      while (ms.Position < data)
+      {
+        int size = reader.ReadByte() - 1;
+
+        if (size < 1)
+          break;
+
+        byte[] recordData = reader.ReadBytes(size);
+        var record = FromBytes(recordData, this, Owner);
+
+        yield return record;
+      }
+    }
   }
 
   /// <summary>
@@ -53,7 +73,7 @@ public class DirectoryRecord : DataRecord
   {
     string padding = new(' ', indent * 2);
 
-    var items = ExtentSector.GetDirectoryContents();
+    var items = GetDirectoryContent();
 
     sb.Append(padding);
     sb.AppendLine(ToString());

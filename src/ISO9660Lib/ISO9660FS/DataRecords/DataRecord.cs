@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace ISO9660Lib.ISO9660FS;
@@ -53,44 +56,29 @@ public class DataRecord
   public readonly int RecordVersion;
 
   /// <summary>
-  /// The sector that this record points to. Note that
-  /// it is initialized lazily and may throw if it is invalid
-  /// </summary>
-  public LogicalSector ExtentSector
-  {
-    get
-    {
-      _owningSector ??= Owner.GetSectorLogical(LocationOfExtent, DataLength, this);
-      return _owningSector;
-    }
-  }
-
-  /// <summary>
   /// This is where extended record information is stored.
   /// It rarely exists
   /// </summary>
   public readonly ExtendedAttributeRecord? ExtendedAttributes;
 
   /// <summary>
-  /// The sector that this record was defined in. Used
+  /// The directory that this record was defined in. Used
   /// for traversing up the file tree. Will be null on
   /// the volume root
   /// </summary>
-  public readonly LogicalSector? ContainingSector;
+  public readonly DirectoryRecord? ContainingRecord;
 
   /// <summary>
   /// The ECMAFS that this record belongs to
   /// </summary>
   public readonly ECMAFS Owner;
 
-  private LogicalSector? _owningSector;
-
   internal DataRecord(
     uint locationOfExtent,
     uint dataLength,
     int flags,
     string identifier,
-    LogicalSector? containedBy,
+    DirectoryRecord? containedBy,
     ExtendedAttributeRecord? ear,
     ECMAFS owner
   )
@@ -100,7 +88,7 @@ public class DataRecord
     FlagIsDirectory = (flags & 0x02) != 0;
     FlagIsMultiExtent = (flags & 0x20) != 0;
     Identifier = identifier;
-    ContainingSector = containedBy;
+    ContainingRecord = containedBy;
     ExtendedAttributes = ear;
     Owner = owner;
 
@@ -115,34 +103,53 @@ public class DataRecord
     }
 
 
-    if (ContainingSector is null || ContainingSector.Parent is null)
+    if (ContainingRecord is null)
       FullyQualifiedIdentifier = Identifier;
     else
     {
-      var parentFQI = ContainingSector.Parent.FullyQualifiedIdentifier;
+      var parentFQI = ContainingRecord.FullyQualifiedIdentifier;
       FullyQualifiedIdentifier = Path.Combine(parentFQI, Identifier);
     }
   }
 
   /// <summary>
-  /// Reads the contents from this record's extent.
-  /// This is generally the file data, but for directories
-  /// it will be the raw listing of all items contained within
+  /// Gets an enumerable list of the file's contents and copies them
+  /// into the buffer provided. The buffer must be the size of one
+  /// logical sector see <see cref="ECMAFS.SECTOR_SIZE"/>
   /// </summary>
+  /// <param name="buffer"></param>
   /// <returns></returns>
-  /// <exception cref="InvalidDataException"></exception>
-  public byte[] GetFileContents(uint? requestedRead = null)
+  public IEnumerable<int> GetFileContentsSectors(byte[] buffer)
   {
-    if (FlagIsMultiExtent)
+    uint currentSector = LocationOfExtent;
+    uint remaining = DataLength;
+    uint blockSize = Owner.PVD.LogicalBlockSize;
+
+    if (buffer.Length < blockSize)
     {
-      Owner._logger?.LogMessage("Multi-extent files are not supported yet");
-      return [];
+      Owner._logger?.LogError("buffer is too small to read a sector");
+      yield break;
     }
 
-    return ExtentSector.GetFileContents(requestedRead);
+    while (remaining > 0)
+    {
+      // Read sector data as a byte array
+      var sectorData = Owner.GetSectorUserData(currentSector);
+
+      // Calculate how many bytes to copy (last sector may be partial)
+      int toCopy = (int)Math.Min(remaining, blockSize);
+
+      // Use Span<byte> locally to copy into buffer
+      sectorData.AsSpan(0, toCopy).CopyTo(buffer);
+
+      yield return toCopy;
+
+      remaining -= (uint)toCopy;
+      currentSector++;
+    }
   }
 
-  internal static DataRecord FromBytes(byte[] data, LogicalSector? containingSector, ECMAFS owningFS)
+  internal static DataRecord FromBytes(byte[] data, DirectoryRecord? containingRecord, ECMAFS owningFS)
   {
     using MemoryStream ms = new(data);
     using BinaryReader reader = new(ms);
@@ -195,13 +202,13 @@ public class DataRecord
     if (extAttrLength > 0)
     {
       var earSize = (extAttrLength + owningFS.PVD.LogicalBlockSize - 1) / owningFS.PVD.LogicalBlockSize;
-      ear = new(extentLocation - earSize, extAttrLength, $"{identifier}-EAR", containingSector, owningFS);
+      ear = new(extentLocation - earSize, extAttrLength, $"{identifier}-EAR", containingRecord, owningFS);
     }
 
     if (isDir)
-      return new DirectoryRecord(extentLocation, dataLength, flags, identifier, containingSector, ear, owningFS);
+      return new DirectoryRecord(extentLocation, dataLength, flags, identifier, containingRecord, ear, owningFS);
 
-    return new(extentLocation, dataLength, flags, identifier, containingSector, ear, owningFS);
+    return new(extentLocation, dataLength, flags, identifier, containingRecord, ear, owningFS);
   }
 
   /// <summary>
@@ -213,10 +220,10 @@ public class DataRecord
   {
     string padID;
 
-    if (FlagIsDirectory)
+    if (this is DirectoryRecord me)
     {
       padID = Identifier.PadRight(9);
-      return $"{padID} [{ExtentSector.GetDirectoryContents().Count} items]";
+      return $"{padID} [{me.GetDirectoryContent().Count()} items]";
     }
 
 
