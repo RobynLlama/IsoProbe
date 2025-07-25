@@ -60,6 +60,7 @@ public class CommandDumpFile : ICommandRunner
       Console.Write($"Wrote {output:N0} bytes ");
 
     Console.WriteLine($"to file: {fileOut.FullName}");
+    Program.GCRequest();
 
     return true;
   }

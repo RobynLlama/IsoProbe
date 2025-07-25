@@ -6,6 +6,8 @@ namespace IsoProbe
 {
   internal class Program
   {
+    private static bool _GCRequest = false;
+    public static void GCRequest() => _GCRequest = true;
     static void Main(string[] args)
     {
       Console.WriteLine("Please LOAD a disk to continue");
@@ -20,6 +22,14 @@ namespace IsoProbe
           dispatcher.ParseAndRunCommand(text);
         else
           Console.WriteLine("Try again!");
+
+        if (_GCRequest)
+        {
+          GC.WaitForPendingFinalizers();
+          GC.Collect();
+          _GCRequest = false;
+        }
+
       }
     }
   }
